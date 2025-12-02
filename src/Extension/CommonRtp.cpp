@@ -48,7 +48,7 @@ bool CommonRtpDecoder::inputRtp(const RtpPacket::Ptr &rtp, bool){
         // 新的一帧数据  [AUTO-TRANSLATED:5b5f3a35]
         // New frame data
         obtainFrame();
-        _frame->_dts = rtp->getStampMS();
+        _frame->_dts = rtp->getStamp();
         _last_stamp = stamp;
         _drop_flag = false;
     } else if (_last_seq != 0 && (uint16_t)(_last_seq + 1) != seq) {

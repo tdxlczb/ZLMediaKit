@@ -49,6 +49,8 @@ protected:
     virtual void onRecvRTP(RtpPacket::Ptr rtp, const SdpTrack::Ptr &track) = 0;
     uint32_t getProgressMilliSecond() const;
     void seekToMilliSecond(uint32_t ms);
+    void setDisableNtpStamp();
+    SdpTrack::Ptr getSdpTrackByTrackType(TrackType track_type);
 
     /**
      * 收到完整的rtsp包回调，包括sdp等content数据

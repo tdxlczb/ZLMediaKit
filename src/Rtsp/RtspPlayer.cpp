@@ -581,7 +581,7 @@ void RtspPlayer::onRtcpPacket(int track_idx, SdpTrack::Ptr &track, uint8_t *data
 }
 
 void RtspPlayer::onRtpSorted(RtpPacket::Ptr rtppt, int trackidx) {
-    _stamp[trackidx] = rtppt->getStampMS();
+    _stamp[trackidx] = rtppt->getStampMS(false);
     if (!_first_stamp[trackidx]) {
         _first_stamp[trackidx] = _stamp[trackidx];
     }
@@ -617,6 +617,20 @@ uint32_t RtspPlayer::getProgressMilliSecond() const {
 
 void RtspPlayer::seekToMilliSecond(uint32_t ms) {
     sendPause(type_seek, ms);
+}
+
+void RtspPlayer::setDisableNtpStamp() {
+    setNtpStamp(getTrackIndexByTrackType(TrackType::TrackVideo), 0, 0);
+    setNtpStamp(getTrackIndexByTrackType(TrackType::TrackAudio), 0, 0);
+}
+
+SdpTrack::Ptr RtspPlayer::getSdpTrackByTrackType(TrackType track_type) {
+    for (size_t i = 0; i < _sdp_track.size(); ++i) {
+        if (_sdp_track[i]->_type == track_type) {
+            return _sdp_track[i];
+        }
+    }
+    return nullptr;
 }
 
 void RtspPlayer::sendRtspRequest(const string &cmd, const string &url, const std::initializer_list<string> &header) {

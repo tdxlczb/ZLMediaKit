@@ -218,6 +218,18 @@ elseif(WIN32)
     # disable Windows logo
    string(REPLACE "/nologo" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
    set(CMAKE_STATIC_LINKER_FLAGS "")
+    add_compile_options(/MP) # 并行编译
+    add_compile_options(/Zi) # pdb 格式
+    
+    # 额外优化
+    # 从 VS 默认的项目的配置中抠出来的
+    add_compile_options("$<$<NOT:$<CONFIG:Debug>>:/Oi>") # Intrinsic Function
+    add_compile_options("$<$<NOT:$<CONFIG:Debug>>:/Gy>") # function-level linkage
+    add_compile_options("$<$<NOT:$<CONFIG:Debug>>:/Od>") # release 禁用优化
+    # 为非 Debug 也生成 pdb
+    add_link_options("$<$<NOT:$<CONFIG:Debug>>:/DEBUG>")
+    add_link_options("$<$<NOT:$<CONFIG:Debug>>:/OPT:REF>")
+    add_link_options("$<$<NOT:$<CONFIG:Debug>>:/OPT:ICF>")
   endif()
 endif()
 
@@ -575,3 +587,6 @@ file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/default.pem" DESTINATION ${EXECUTABLE_OUT
 if (ENABLE_VIDEOSTACK AND ENABLE_FFMPEG AND ENABLE_X264)
   file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/conf/novideo.yuv" DESTINATION ${EXECUTABLE_OUTPUT_PATH})
 endif ()
+
+
+add_subdirectory(zlmplayer)
