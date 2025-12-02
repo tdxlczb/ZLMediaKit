@@ -174,7 +174,7 @@ bool H264RtpDecoder::decodeRtp(const RtpPacket::Ptr &rtp) {
         return false;
     }
     auto frame = rtp->getPayload();
-    auto stamp = rtp->getStampMS();
+    auto stamp = rtp->getStamp();
     auto seq = rtp->getSeq();
     int nal = H264_TYPE(frame[0]);
 
