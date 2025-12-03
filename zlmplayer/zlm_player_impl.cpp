@@ -3,7 +3,8 @@
 
 namespace zlmplayer {
 
-ZlmPlayerImpl::ZlmPlayerImpl() {}
+ZlmPlayerImpl::ZlmPlayerImpl()
+    : m_packetBuf(std::make_unique<RawBuffer>()) {}
 
 ZlmPlayerImpl::~ZlmPlayerImpl() {}
 
@@ -66,10 +67,10 @@ bool ZlmPlayerImpl::StreamOpen(const std::string &url, const PlayOptions &option
         if (ex) {
             m_playStatus = PlayStatus::Failed;
             return;
-        } 
+        }
 
         auto videoTrack = std::dynamic_pointer_cast<mediakit::VideoTrack>(m_rtspPlayerImpl->getTrack(mediakit::TrackVideo));
-        if (videoTrack) { 
+        if (videoTrack) {
             m_videoStream.type = kStreamVideo;
             m_videoStream.codecId = videoTrack->getCodecId();
             m_videoStream.width = videoTrack->getVideoWidth();
@@ -78,14 +79,28 @@ bool ZlmPlayerImpl::StreamOpen(const std::string &url, const PlayOptions &option
             m_videoStream.clockRate = m_rtspPlayerImpl->getVideoClockRate();
             videoTrack->addDelegate([this](const mediakit::Frame::Ptr &frame) {
                 if (frame && m_onPacket) {
+                    uint8_t *data = (uint8_t *)frame->data();
+                    size_t size = frame->size();
+                    // 配置帧，譬如sps pps vps需要和关键帧一起发送，否则解码器解码可能会出现异常
+                    if (frame->configFrame() || (frame->pts() == m_packetPts)) {
+                        m_packetPts = frame->pts();
+                        m_packetBuf->push(data, size);
+                        return true;
+                    } else if (m_packetBuf->size() > 0) {
+                        data = m_packetBuf->data();
+                        size = m_packetBuf->size();
+                    }
                     Packet pkt;
                     pkt.isAudio = false;
                     pkt.isKey = frame->keyFrame();
-                    pkt.data = (uint8_t *)frame->data();
-                    pkt.size = frame->size();
+                    pkt.data = data;
+                    pkt.size = size;
                     pkt.dts = frame->dts();
                     pkt.pts = frame->pts();
                     m_onPacket(pkt);
+
+                    m_packetBuf->clear();
+                    m_packetPts = 0;
                 }
                 return true;
             });
