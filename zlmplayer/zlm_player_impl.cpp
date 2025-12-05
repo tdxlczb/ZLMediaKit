@@ -81,18 +81,26 @@ bool ZlmPlayerImpl::StreamOpen(const std::string &url, const PlayOptions &option
                 if (frame && m_onPacket) {
                     uint8_t *data = (uint8_t *)frame->data();
                     size_t size = frame->size();
+                    bool isKey = frame->keyFrame();
+                    //可丢弃的帧
+                    if (frame->dropAble()) {
+                        return true;
+                    }
                     // 配置帧，譬如sps pps vps需要和关键帧一起发送，否则解码器解码可能会出现异常
-                    if (frame->configFrame() || (frame->pts() == m_packetPts)) {
+                    if (frame->configFrame()) {
                         m_packetPts = frame->pts();
                         m_packetBuf->push(data, size);
                         return true;
-                    } else if (m_packetBuf->size() > 0) {
+                    } 
+                    if (m_packetBuf->size() > 0 && (frame->pts() == m_packetPts)) {
+                        m_packetPts = frame->pts();
+                        m_packetBuf->push(data, size);
                         data = m_packetBuf->data();
                         size = m_packetBuf->size();
                     }
                     Packet pkt;
                     pkt.isAudio = false;
-                    pkt.isKey = frame->keyFrame();
+                    pkt.isKey = isKey;
                     pkt.data = data;
                     pkt.size = size;
                     pkt.dts = frame->dts();
@@ -112,6 +120,7 @@ bool ZlmPlayerImpl::StreamOpen(const std::string &url, const PlayOptions &option
             m_audioStream.codecId = audioTrack->getCodecId();
             m_audioStream.sampleRate = audioTrack->getAudioSampleRate();
             m_audioStream.channels = audioTrack->getAudioChannel();
+            m_audioStream.sampleBit = audioTrack->getAudioSampleBit();
             m_audioStream.clockRate = m_audioStream.sampleRate;
             audioTrack->addDelegate([this](const mediakit::Frame::Ptr &frame) {
                 if (frame && m_onPacket) {
