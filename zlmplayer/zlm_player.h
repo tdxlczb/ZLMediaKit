@@ -4,7 +4,7 @@
 #ifdef zlmplayer_EXPORTS
 #define ZPLIB_API __declspec(dllexport)
 #else
-#define ZPLIB_API __declspec(dllimport)
+#define ZPLIB_API 
 #endif
 #else
 #define ZPLIB_API __attribute__((visibility("default")))
@@ -65,6 +65,7 @@ struct StreamInfo {
     int frameFps = 0;
     int sampleRate = 0;
     int channels = 0;
+    int sampleBit = 0; //采样点位数
     int clockRate = 0; //时钟频率，用于获取timebase
 };
 
