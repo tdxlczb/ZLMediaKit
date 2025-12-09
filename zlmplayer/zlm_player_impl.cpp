@@ -66,12 +66,13 @@ bool ZlmPlayerImpl::StreamOpen(const std::string &url, const PlayOptions &option
         InfoL << "OnPlayResult:" << ex.what();
         if (ex) {
             m_playStatus = PlayStatus::Failed;
+            if (m_onPlayStatus)
+                m_onPlayStatus(m_playStatus);
             return;
         }
-
         auto videoTrack = std::dynamic_pointer_cast<mediakit::VideoTrack>(m_rtspPlayerImpl->getTrack(mediakit::TrackVideo));
         if (videoTrack) {
-            m_videoStream.type = kStreamVideo;
+            m_videoStream.mediaType = kMediaVideo;
             m_videoStream.codecId = videoTrack->getCodecId();
             m_videoStream.width = videoTrack->getVideoWidth();
             m_videoStream.height = videoTrack->getVideoHeight();
@@ -99,12 +100,13 @@ bool ZlmPlayerImpl::StreamOpen(const std::string &url, const PlayOptions &option
                         size = m_packetBuf->size();
                     }
                     Packet pkt;
-                    pkt.isAudio = false;
+                    pkt.mediaType = kMediaVideo;
                     pkt.isKey = isKey;
                     pkt.data = data;
                     pkt.size = size;
                     pkt.dts = frame->dts();
                     pkt.pts = frame->pts();
+                    pkt.clockRate = m_videoStream.clockRate;
                     m_onPacket(pkt);
 
                     m_packetBuf->clear();
@@ -116,7 +118,7 @@ bool ZlmPlayerImpl::StreamOpen(const std::string &url, const PlayOptions &option
 
         auto audioTrack = std::dynamic_pointer_cast<mediakit::AudioTrack>(m_rtspPlayerImpl->getTrack(mediakit::TrackAudio));
         if (audioTrack) {
-            m_audioStream.type = kStreamAudio;
+            m_audioStream.mediaType = kMediaAudio;
             m_audioStream.codecId = audioTrack->getCodecId();
             m_audioStream.sampleRate = audioTrack->getAudioSampleRate();
             m_audioStream.channels = audioTrack->getAudioChannel();
@@ -125,12 +127,13 @@ bool ZlmPlayerImpl::StreamOpen(const std::string &url, const PlayOptions &option
             audioTrack->addDelegate([this](const mediakit::Frame::Ptr &frame) {
                 if (frame && m_onPacket) {
                     Packet pkt;
-                    pkt.isAudio = true;
+                    pkt.mediaType = kMediaAudio;
                     pkt.isKey = frame->keyFrame();
                     pkt.data = (uint8_t *)frame->data();
                     pkt.size = frame->size();
                     pkt.dts = frame->dts();
                     pkt.pts = frame->pts();
+                    pkt.clockRate = m_audioStream.clockRate;
                     m_onPacket(pkt);
                 }
                 return true;
@@ -149,8 +152,7 @@ bool ZlmPlayerImpl::StreamOpen(const std::string &url, const PlayOptions &option
             m_onPlayStatus(m_playStatus);
     });
 
-    auto tempOptions = options;
-    if (tempOptions["rtsp_transport"] == "tcp") {
+    if (options.isTcp) {
         // RTP transport over TCP
         (*m_rtspPlayerImpl)[mediakit::Client::kRtpType] = mediakit::Rtsp::RTP_TCP;
     } else {

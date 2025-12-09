@@ -1,13 +1,14 @@
-#pragma once
+#ifndef ZLM_PLAYER_H
+#define ZLM_PLAYER_H
 
 #if defined(_WIN32)
 #ifdef zlmplayer_EXPORTS
-#define ZPLIB_API __declspec(dllexport)
+#define ZLMPLAYER_API __declspec(dllexport)
 #else
-#define ZPLIB_API 
+#define ZLMPLAYER_API
 #endif
 #else
-#define ZPLIB_API __attribute__((visibility("default")))
+#define ZLMPLAYER_API __attribute__((visibility("default")))
 #endif
 
 #include <functional>
@@ -45,20 +46,19 @@
 
 namespace zlmplayer {
 
-using PlayOptions = std::map<std::string, std::string>;
-/*
- * rtsp_transport=tcp
- */
+struct PlayOptions {
+    bool isTcp = false;
+};
 
-using StreamType = int;
-const StreamType kStreamNone = -1;
-const StreamType kStreamVideo = 0;
-const StreamType kStreamAudio = 1;
+using MediaType = int;
+const MediaType kMediaNone = -1;
+const MediaType kMediaVideo = 0;
+const MediaType kMediaAudio = 1;
 
 using CodecId = int;
 
 struct StreamInfo {
-    StreamType type = kStreamNone;
+    MediaType mediaType = kMediaNone; // 媒体类型
     CodecId codecId = -1; // 使用zlm的CodecId
     int width = 0;
     int height = 0;
@@ -70,15 +70,16 @@ struct StreamInfo {
 };
 
 struct Packet {
-    bool isAudio = false;
+    MediaType mediaType = kMediaNone;
     bool isKey = false;
     uint8_t *data = nullptr;
     size_t size = 0;
     int64_t pts = 0;
     int64_t dts = 0;
+    int clockRate = 0; // 时钟频率，用于获取timebase
 };
 
-enum class PlayStatus {
+enum PlayStatus {
     None = -1, //初始状态
     Success = 0, // 播放成功
     Failed, // 播放失败
@@ -90,7 +91,7 @@ using OnPlayStatus = std::function<void(PlayStatus status)>;
 
 class ZlmPlayerImpl;
 
-class ZPLIB_API ZlmPlayer {
+class ZLMPLAYER_API ZlmPlayer {
 public:
     ZlmPlayer();
     ~ZlmPlayer();
@@ -111,3 +112,6 @@ private:
 };
 
 } // namespace zlmplayer
+
+
+#endif // ZLM_PLAYER_H
