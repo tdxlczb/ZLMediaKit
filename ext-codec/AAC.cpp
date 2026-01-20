@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2016-present The ZLMediaKit project authors. All Rights Reserved.
  *
  * This file is part of ZLMediaKit(https://github.com/ZLMediaKit/ZLMediaKit).
@@ -408,6 +408,10 @@ Track::Ptr getTrackBySdp(const SdpTrack::Ptr &track) {
         sscanf(aac_cfg_str.substr(i * 2, 2).data(), "%02X", &cfg);
         cfg &= 0x00FF;
         aac_cfg.push_back((char)cfg);
+    }
+    if (aac_cfg.size() < 2) {
+        // 内部抛出异常，在外部接收异常，会被认为整个流异常，这里提前判断异常，避免影响其他Track
+        return nullptr;
     }
     return std::make_shared<AACTrack>(aac_cfg);
 }
