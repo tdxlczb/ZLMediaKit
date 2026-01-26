@@ -1,17 +1,17 @@
 #include "zlm_player_c.h"
 #include "zlm_player.h"
 
-void *__stdcall ZP_CreateZlmplayer() {
+void *API_CALL ZP_CreateZlmplayer() {
     zlmplayer::ZlmPlayer *impl = new zlmplayer::ZlmPlayer();
     return impl;
 }
 
-void __stdcall ZP_DeleteZlmplayer(void *pPlayer) {
+void API_CALL ZP_DeleteZlmplayer(void *pPlayer) {
     delete pPlayer;
     pPlayer = nullptr;
 }
 
-void __stdcall ZP_SetOnPacket(void *pPlayer, OnPacket callback, void *user) {
+void API_CALL ZP_SetOnPacket(void *pPlayer, OnPacket callback, void *user) {
     zlmplayer::ZlmPlayer *impl = (zlmplayer::ZlmPlayer *)pPlayer;
     if (!impl)
         return;
@@ -28,14 +28,14 @@ void __stdcall ZP_SetOnPacket(void *pPlayer, OnPacket callback, void *user) {
     });
 }
 
-void __stdcall ZP_SetOnPlayStatus(void *pPlayer, OnPlayStatus callback, void *user) {
+void API_CALL ZP_SetOnPlayStatus(void *pPlayer, OnPlayStatus callback, void *user) {
     zlmplayer::ZlmPlayer *impl = (zlmplayer::ZlmPlayer *)pPlayer;
     if (!impl)
         return;
     impl->SetOnPlayStatus([callback, user](zlmplayer::PlayStatus status) { callback((ZP_PlayStatus)status, user); });
 }
 
-bool __stdcall ZP_Play(void *pPlayer, const char *url, ZP_PlayOptions options) {
+bool API_CALL ZP_Play(void *pPlayer, const char *url, ZP_PlayOptions options) {
     zlmplayer::ZlmPlayer *impl = (zlmplayer::ZlmPlayer *)pPlayer;
     if (!impl)
         return false;
@@ -44,42 +44,42 @@ bool __stdcall ZP_Play(void *pPlayer, const char *url, ZP_PlayOptions options) {
     return impl->Play(url, opts);
 }
 
-void __stdcall ZP_Stop(void *pPlayer) {
+void API_CALL ZP_Stop(void *pPlayer) {
     zlmplayer::ZlmPlayer *impl = (zlmplayer::ZlmPlayer *)pPlayer;
     if (!impl)
         return;
     impl->Stop();
 }
 
-void __stdcall ZP_Pause(void *pPlayer) {
+void API_CALL ZP_Pause(void *pPlayer) {
     zlmplayer::ZlmPlayer *impl = (zlmplayer::ZlmPlayer *)pPlayer;
     if (!impl)
         return;
     impl->Pause();
 }
 
-void __stdcall ZP_Resume(void *pPlayer) {
+void API_CALL ZP_Resume(void *pPlayer) {
     zlmplayer::ZlmPlayer *impl = (zlmplayer::ZlmPlayer *)pPlayer;
     if (!impl)
         return;
     impl->Resume();
 }
 
-void __stdcall ZP_Seek(void *pPlayer, int seconds) {
+void API_CALL ZP_Seek(void *pPlayer, int seconds) {
     zlmplayer::ZlmPlayer *impl = (zlmplayer::ZlmPlayer *)pPlayer;
     if (!impl)
         return;
     impl->Seek(seconds);
 }
 
-void __stdcall ZP_Speed(void *pPlayer, double speed) {
+void API_CALL ZP_Speed(void *pPlayer, double speed) {
     zlmplayer::ZlmPlayer *impl = (zlmplayer::ZlmPlayer *)pPlayer;
     if (!impl)
         return;
     impl->Speed(speed);
 }
 
-ZP_StreamInfo __stdcall ZP_GetVideoStream(void *pPlayer) {
+ZP_StreamInfo API_CALL ZP_GetVideoStream(void *pPlayer) {
     zlmplayer::ZlmPlayer *impl = (zlmplayer::ZlmPlayer *)pPlayer;
     ZP_StreamInfo info;
     if (!impl)
@@ -97,7 +97,7 @@ ZP_StreamInfo __stdcall ZP_GetVideoStream(void *pPlayer) {
     return info;
 }
 
-ZP_StreamInfo __stdcall ZP_GetAudioStream(void *pPlayer) {
+ZP_StreamInfo API_CALL ZP_GetAudioStream(void *pPlayer) {
     zlmplayer::ZlmPlayer *impl = (zlmplayer::ZlmPlayer *)pPlayer;
     ZP_StreamInfo info;
     if (!impl)

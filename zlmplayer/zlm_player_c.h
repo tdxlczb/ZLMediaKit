@@ -4,10 +4,20 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#ifdef zlmplayer_EXPORTS
-#define ZLMPLAYER_API __declspec(dllexport)
+#if defined(_WIN32) && defined(_MSC_VER)
+    #ifdef zlmplayer_EXPORTS
+        #define ZLMPLAYER_API __declspec(dllexport)
+    #else
+        #define ZLMPLAYER_API __declspec(dllimport)
+    #endif
 #else
-#define ZLMPLAYER_API __declspec(dllimport)
+    #define ZLMPLAYER_API
+#endif
+
+#if defined(_WIN32) && defined(_MSC_VER)
+    #define API_CALL __stdcall
+#else
+    #define API_CALL
 #endif
 
 #ifdef __cplusplus
@@ -47,21 +57,21 @@ enum ZP_PlayStatus {
     Stop       // 停止播放
 };
 
-typedef void(__stdcall *OnPacket)(ZP_Packet pkt, void *user);
-typedef void(__stdcall *OnPlayStatus)(ZP_PlayStatus status, void *user);
+typedef void(API_CALL *OnPacket)(ZP_Packet pkt, void *user);
+typedef void(API_CALL *OnPlayStatus)(ZP_PlayStatus status, void *user);
 
-ZLMPLAYER_API void *__stdcall ZP_CreateZlmplayer();
-ZLMPLAYER_API void __stdcall ZP_DeleteZlmplayer(void *pPlayer);
-ZLMPLAYER_API void __stdcall ZP_SetOnPacket(void *pPlayer, OnPacket callback, void *user);
-ZLMPLAYER_API void __stdcall ZP_SetOnPlayStatus(void *pPlayer, OnPlayStatus callback, void *user);
-ZLMPLAYER_API bool __stdcall ZP_Play(void *pPlayer, const char *url, ZP_PlayOptions options);
-ZLMPLAYER_API void __stdcall ZP_Stop(void *pPlayer);
-ZLMPLAYER_API void __stdcall ZP_Pause(void *pPlayer);
-ZLMPLAYER_API void __stdcall ZP_Resume(void *pPlayer);
-ZLMPLAYER_API void __stdcall ZP_Seek(void *pPlayer, int seconds);
-ZLMPLAYER_API void __stdcall ZP_Speed(void *pPlayer, double speed);
-ZLMPLAYER_API ZP_StreamInfo __stdcall ZP_GetVideoStream(void *pPlayer);
-ZLMPLAYER_API ZP_StreamInfo __stdcall ZP_GetAudioStream(void *pPlayer);
+ZLMPLAYER_API void *API_CALL ZP_CreateZlmplayer();
+ZLMPLAYER_API void API_CALL ZP_DeleteZlmplayer(void *pPlayer);
+ZLMPLAYER_API void API_CALL ZP_SetOnPacket(void *pPlayer, OnPacket callback, void *user);
+ZLMPLAYER_API void API_CALL ZP_SetOnPlayStatus(void *pPlayer, OnPlayStatus callback, void *user);
+ZLMPLAYER_API bool API_CALL ZP_Play(void *pPlayer, const char *url, ZP_PlayOptions options);
+ZLMPLAYER_API void API_CALL ZP_Stop(void *pPlayer);
+ZLMPLAYER_API void API_CALL ZP_Pause(void *pPlayer);
+ZLMPLAYER_API void API_CALL ZP_Resume(void *pPlayer);
+ZLMPLAYER_API void API_CALL ZP_Seek(void *pPlayer, int seconds);
+ZLMPLAYER_API void API_CALL ZP_Speed(void *pPlayer, double speed);
+ZLMPLAYER_API ZP_StreamInfo API_CALL ZP_GetVideoStream(void *pPlayer);
+ZLMPLAYER_API ZP_StreamInfo API_CALL ZP_GetAudioStream(void *pPlayer);
 
 #ifdef __cplusplus
 }

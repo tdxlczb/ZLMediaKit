@@ -3,8 +3,9 @@
 
 namespace zlmplayer {
 
-ZlmPlayerImpl::ZlmPlayerImpl()
-    : m_packetBuf(std::make_unique<RawBuffer>()) {}
+ZlmPlayerImpl::ZlmPlayerImpl() {
+    m_packetBuf = std::unique_ptr<RawBuffer>(new RawBuffer());
+}
 
 ZlmPlayerImpl::~ZlmPlayerImpl() {}
 

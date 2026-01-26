@@ -3,8 +3,9 @@
 
 namespace zlmplayer {
 
-ZlmPlayer::ZlmPlayer()
-    : m_impl(std::make_unique<ZlmPlayerImpl>()) {}
+ZlmPlayer::ZlmPlayer() {
+    m_impl = std::unique_ptr<ZlmPlayerImpl>(new ZlmPlayerImpl());
+}
 
 ZlmPlayer::~ZlmPlayer() {}
 
