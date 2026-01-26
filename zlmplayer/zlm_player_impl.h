@@ -2,7 +2,7 @@
 #include "zlm_player.h"
 #include <condition_variable>
 #include <memory>
-#include <string>
+#include <cstring>
 
 namespace zlmplayer {
 
