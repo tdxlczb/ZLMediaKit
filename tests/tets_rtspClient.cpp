@@ -146,7 +146,7 @@ void RtspPlayerImp::onRecvRTP(mediakit::RtpPacket::Ptr rtp, const mediakit::SdpT
 
 int main(int argc, char *argv[]) {
 
-    std::string url = "rtsp://admin:admin@123@172.16.25.11:554/c2/b1764374400/e1764378000/replay/s0/";
+    std::string url = "rtsp://admin:admin@123@172.16.25.11:554/unicast/c5/s0/live";
     //std::string url = "rtsp://172.16.19.69/live/test";
     // 设置日志  [AUTO-TRANSLATED:50ba02ba]
     // Set log
@@ -185,10 +185,10 @@ int main(int argc, char *argv[]) {
                     static int frameIndex = 0;
                     frameIndex++;
                     auto pts = frame->pts();
+                    auto data = frame->data();
                     auto size = frame->size();
                     auto isKey = frame->keyFrame();
-                    InfoL << "======= get video Track frame index：" << frameIndex << +", pts:" << pts << +", size:" << size
-                          << ", keyFrame:" << frame->keyFrame();
+                    InfoL << "======= get video Track frame index：" << frameIndex << +", pts:" << pts << +", size:" << size << ", keyFrame:" << isKey;
                 }
                 return true;
             });
@@ -207,13 +207,17 @@ int main(int argc, char *argv[]) {
             auto num = audioTrack->getFrames();
             auto samplerate = audioTrack->getAudioSampleRate();
             auto channels = audioTrack->getAudioChannel();
+            auto sampleBits = audioTrack->getAudioSampleBit();
 
             audioTrack->addDelegate([](const mediakit::Frame::Ptr &frame) {
                 // please decode audio here
                 if (frame) {
                     static int frameIndex = 0;
                     frameIndex++;
-                    InfoL << "get audio Track frame index：" << frameIndex << +", pts:" << frame->pts() << ", keyFrame:" << frame->keyFrame();
+                    auto pts = frame->pts();
+                    auto data = frame->data();
+                    auto size = frame->size();
+                    //InfoL << "get audio Track frame index：" << frameIndex << +", pts:" << frame->pts() << ", keyFrame:" << frame->keyFrame();
                 }
                 return true;
             });
@@ -233,24 +237,28 @@ int main(int argc, char *argv[]) {
         int i = 0;
         while (true) {
             i++;
-            Sleep(100);
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
             if (i == 10) {
                 player->seekTo((uint32_t)120);
                 //player->speed(16.0);
             }
 
-            if (i == 20) {
-                player->pause(true);
-            }
-            if (i == 25) {
-                player->pause(false);
-            }
+            //if (i == 20) {
+            //    player->pause(true);
+            //}
+            //if (i == 25) {
+            //    player->pause(false);
+            //}
             //if (i == 30) {
             //    player->pause(true);
             //}
             //if (i == 35) {
             //    player->pause(false);
             //}
+            if (i == 20) {
+                player->teardown();
+                break;
+            }
         }
         });
     th.join();
@@ -279,15 +287,21 @@ int main2(int argc, char *argv[]) {
         player->SetOnPlayStatus([](zlmplayer::PlayStatus status) {
             });
         player->SetOnPacket([](const zlmplayer::Packet&packet) {
-            if (packet.isAudio) {
+
+            if (packet.mediaType == zlmplayer::kMediaAudio) {
                 InfoL << "get audio Track frame:" << (int64_t)packet.pts;
             } else {
-                InfoL << "get video Track frame:" << (int64_t)packet.pts;
+                static int frameIndex = 0;
+                frameIndex++;
+                auto pts = packet.pts;
+                auto data = packet.data;
+                auto size = packet.size;
+                InfoL << "get video Track frame:" << (int64_t)packet.pts << ", isKey:" << packet.isKey;
             }
             });
         
         zlmplayer::PlayOptions options;
-        options["rtsp_transport"] = "tcp";
+        options.isTcp = true;
         player->Play(url, options);
     });
     th1.join();
@@ -296,7 +310,7 @@ int main2(int argc, char *argv[]) {
         int i = 0;
         while (true) {
             i++;
-            Sleep(100);
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
             if (i == 10) {
                 //player->Seek((uint32_t)120);
                 player->Speed(8.0);
@@ -314,6 +328,10 @@ int main2(int argc, char *argv[]) {
             //if (i == 35) {
             //    player->Resume();
             //}
+            if (i == 10) {
+                player->Stop();
+                break;
+            }
         }
     });
     th.join();
