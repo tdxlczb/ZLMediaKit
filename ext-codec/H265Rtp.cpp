@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2016-present The ZLMediaKit project authors. All Rights Reserved.
  *
  * This file is part of ZLMediaKit(https://github.com/ZLMediaKit/ZLMediaKit).
@@ -206,7 +206,7 @@ bool H265RtpDecoder::decodeRtp(const RtpPacket::Ptr &rtp) {
         return false;
     }
     auto frame = rtp->getPayload();
-    auto stamp = rtp->getStampMS();
+    auto stamp = rtp->getStamp();
     auto seq = rtp->getSeq();
     int nal = H265_TYPE(frame[0]);
 
