@@ -79,6 +79,7 @@ bool ZlmPlayerImpl::StreamOpen(const std::string &url, const PlayOptions &option
             m_videoStream.height = videoTrack->getVideoHeight();
             m_videoStream.frameFps = videoTrack->getVideoFps();
             m_videoStream.clockRate = m_rtspPlayerImpl->getVideoClockRate();
+            m_videoStream.extradata =videoTrack->getExtraData()->toString();
             videoTrack->addDelegate([this](const mediakit::Frame::Ptr &frame) {
                 if (frame && m_onPacket) {
                     uint8_t *data = (uint8_t *)frame->data();
@@ -125,6 +126,7 @@ bool ZlmPlayerImpl::StreamOpen(const std::string &url, const PlayOptions &option
             m_audioStream.channels = audioTrack->getAudioChannel();
             m_audioStream.sampleBit = audioTrack->getAudioSampleBit();
             m_audioStream.clockRate = m_audioStream.sampleRate;
+            m_audioStream.extradata = videoTrack->getExtraData()->toString();
             audioTrack->addDelegate([this](const mediakit::Frame::Ptr &frame) {
                 if (frame && m_onPacket) {
                     Packet pkt;

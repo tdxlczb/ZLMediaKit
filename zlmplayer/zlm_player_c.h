@@ -38,6 +38,8 @@ typedef struct ZP_StreamInfoC {
     int channels = 0;
     int sampleBit = 0; // 采样点位数
     int clockRate = 0; // 时钟频率，用于获取timebase
+    const char *extradata = nullptr; //流扩展信息
+    int extrasize = 0;
 } ZP_StreamInfo;
 
 typedef struct ZP_PacketC {

@@ -94,6 +94,8 @@ ZP_StreamInfo API_CALL ZP_GetVideoStream(void *pPlayer) {
     info.channels = sinfo.channels;
     info.sampleBit = sinfo.sampleBit;
     info.clockRate = sinfo.clockRate;
+    info.extradata = sinfo.extradata.data();
+    info.extrasize = sinfo.extradata.size();
     return info;
 }
 
@@ -112,5 +114,7 @@ ZP_StreamInfo API_CALL ZP_GetAudioStream(void *pPlayer) {
     info.channels = sinfo.channels;
     info.sampleBit = sinfo.sampleBit;
     info.clockRate = sinfo.clockRate;
+    info.extradata = sinfo.extradata.data();
+    info.extrasize = sinfo.extradata.size();
     return info;
 }
