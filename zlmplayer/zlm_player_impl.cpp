@@ -5,6 +5,9 @@ namespace zlmplayer {
 
 ZlmPlayerImpl::ZlmPlayerImpl() {
     m_packetBuf = std::unique_ptr<RawBuffer>(new RawBuffer());
+    m_videoExtraBuf = std::unique_ptr<RawBuffer>(new RawBuffer());
+    m_audioExtraBuf = std::unique_ptr<RawBuffer>(new RawBuffer());
+
 }
 
 ZlmPlayerImpl::~ZlmPlayerImpl() {}
@@ -79,7 +82,18 @@ bool ZlmPlayerImpl::StreamOpen(const std::string &url, const PlayOptions &option
             m_videoStream.height = videoTrack->getVideoHeight();
             m_videoStream.frameFps = videoTrack->getVideoFps();
             m_videoStream.clockRate = m_rtspPlayerImpl->getVideoClockRate();
-            m_videoStream.extradata =videoTrack->getExtraData()->toString();
+
+            m_videoExtraBuf->clear();
+            auto configs = videoTrack->getConfigFrames();
+            for (size_t i = 0; i < configs.size(); i++) {
+                m_videoExtraBuf->push((uint8_t *)configs[i]->data(), configs[i]->size());
+            }
+            if (m_videoExtraBuf->size() <= 0) {
+                auto extra = videoTrack->getExtraData();
+                m_videoExtraBuf->push((uint8_t *)extra->data(), extra->size());
+            }
+            m_videoStream.extradata = m_videoExtraBuf->data();
+            m_videoStream.extrasize = m_videoExtraBuf->size();
             videoTrack->addDelegate([this](const mediakit::Frame::Ptr &frame) {
                 if (frame && m_onPacket) {
                     uint8_t *data = (uint8_t *)frame->data();
@@ -126,7 +140,12 @@ bool ZlmPlayerImpl::StreamOpen(const std::string &url, const PlayOptions &option
             m_audioStream.channels = audioTrack->getAudioChannel();
             m_audioStream.sampleBit = audioTrack->getAudioSampleBit();
             m_audioStream.clockRate = m_audioStream.sampleRate;
-            m_audioStream.extradata = videoTrack->getExtraData()->toString();
+
+            m_audioExtraBuf->clear();
+            auto extra = audioTrack->getExtraData();
+            m_audioExtraBuf->push((uint8_t *)extra->data(), extra->size());
+            m_audioStream.extradata = m_audioExtraBuf->data();
+            m_audioStream.extrasize = m_audioExtraBuf->size();
             audioTrack->addDelegate([this](const mediakit::Frame::Ptr &frame) {
                 if (frame && m_onPacket) {
                     Packet pkt;
