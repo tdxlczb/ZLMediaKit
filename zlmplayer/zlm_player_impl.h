@@ -74,6 +74,8 @@ private:
     std::condition_variable m_cv;
     StreamInfo m_videoStream;
     StreamInfo m_audioStream;
+    std::unique_ptr<RawBuffer> m_videoExtraBuf;
+    std::unique_ptr<RawBuffer> m_audioExtraBuf;
 
     std::unique_ptr<RawBuffer> m_packetBuf;
     uint64_t m_packetPts = 0;

@@ -94,8 +94,8 @@ ZP_StreamInfo API_CALL ZP_GetVideoStream(void *pPlayer) {
     info.channels = sinfo.channels;
     info.sampleBit = sinfo.sampleBit;
     info.clockRate = sinfo.clockRate;
-    info.extradata = sinfo.extradata.data();
-    info.extrasize = sinfo.extradata.size();
+    info.extradata = sinfo.extradata; //注意，sinfo是局部变量，extradata不能使用string的data()，否则调用该接口获取的extradata可能会数据异常
+    info.extrasize = sinfo.extrasize;
     return info;
 }
 
@@ -114,7 +114,7 @@ ZP_StreamInfo API_CALL ZP_GetAudioStream(void *pPlayer) {
     info.channels = sinfo.channels;
     info.sampleBit = sinfo.sampleBit;
     info.clockRate = sinfo.clockRate;
-    info.extradata = sinfo.extradata.data();
-    info.extrasize = sinfo.extradata.size();
+    info.extradata = sinfo.extradata;
+    info.extrasize = sinfo.extrasize;
     return info;
 }

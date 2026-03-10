@@ -67,7 +67,8 @@ struct StreamInfo {
     int channels = 0;
     int sampleBit = 0; //采样点位数
     int clockRate = 0; //时钟频率，用于获取timebase
-    std::string extradata;
+    uint8_t *extradata = nullptr; // 流扩展信息
+    size_t extrasize = 0;
 };
 
 struct Packet {
