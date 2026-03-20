@@ -144,125 +144,164 @@ void RtspPlayerImp::onRecvRTP(mediakit::RtpPacket::Ptr rtp, const mediakit::SdpT
 
 } // namespace test
 
-int main(int argc, char *argv[]) {
 
-    std::string url = "rtsp://admin:admin@123@172.16.25.11:554/unicast/c5/s0/live";
+int main01(int argc, char *argv[]) {
+
+    std::string url = "rtsp://admin:admin@123@172.16.25.11:554/c5/b1772640000/e1772726399/replay/s0/";
     //std::string url = "rtsp://172.16.19.69/live/test";
     // 设置日志  [AUTO-TRANSLATED:50ba02ba]
     // Set log
     toolkit::Logger::Instance().add(std::make_shared<toolkit::ConsoleChannel>());
     toolkit::Logger::Instance().setWriter(std::make_shared<toolkit::AsyncLogWriter>());
 
-    std::shared_ptr<test::RtspPlayerImp> player = nullptr;
+    std::vector<std::string> urls;
+    urls.push_back("rtsp://admin:admin@123@172.16.45.172:554/c1/b1773302457/e1773302577/replay/s0/");
+    urls.push_back("rtsp://admin:admin@123@172.16.45.172:554/c2/b1773302457/e1773302577/replay/s0/");
+    urls.push_back("rtsp://admin:admin@123@172.16.45.172:554/c3/b1773302457/e1773302577/replay/s0/");
 
-    std::thread th1([&player,url](){
+    static bool threadRun = true;
+    std::vector<std::thread> threads;
+    for (size_t i = 0; i < urls.size(); i++) {
+        auto th = std::thread([=]() {
+            int url_index = i;
+            std::string url = urls[i];
+            int64_t firstPts = 0;
 
-    auto poller = toolkit::EventPollerPool::Instance().getPoller();
-    player = std::move(std::make_shared<test::RtspPlayerImp>(poller));
-    player->setOnPlayResult([player](const toolkit::SockException &ex) {
-        InfoL << "OnPlayResult:" << ex.what();
-        if (ex) {
-            return;
-        }
-        {
-            auto videoTrack = std::dynamic_pointer_cast<mediakit::VideoTrack>(player->getTrack(mediakit::TrackVideo));
-            if (!videoTrack) {
-                WarnL << "No video Track!";
-                return;
-            }
-            auto id = videoTrack->getCodecId();
-            auto br = videoTrack->getBitRate();
-            auto name = videoTrack->getCodecName();
-            auto dur = videoTrack->getDuration();
-            auto index = videoTrack->getIndex();
-            auto num = videoTrack->getFrames();
-            auto fps = videoTrack->getVideoFps();
-            auto h = videoTrack->getVideoHeight();
-            auto w = videoTrack->getVideoWidth();
-            videoTrack->addDelegate([](const mediakit::Frame::Ptr &frame) {
-                // please decode video here
-                if (frame) {
-                    static int frameIndex = 0;
-                    frameIndex++;
-                    auto pts = frame->pts();
-                    auto data = frame->data();
-                    auto size = frame->size();
-                    auto isKey = frame->keyFrame();
-                    InfoL << "======= get video Track frame index：" << frameIndex << +", pts:" << pts << +", size:" << size << ", keyFrame:" << isKey;
+            auto poller = toolkit::EventPollerPool::Instance().getPoller();
+            std::shared_ptr<test::RtspPlayerImp> player = std::make_shared<test::RtspPlayerImp>(poller);
+            player->setOnPlayResult([=, &firstPts](const toolkit::SockException &ex) {
+                InfoL << url_index << " OnPlayResult:" << ex.what();
+                if (ex) {
+                    return;
                 }
-                return true;
-            });
-        }
-        {
-            auto audioTrack = std::dynamic_pointer_cast<mediakit::AudioTrack>(player->getTrack(mediakit::TrackAudio));
-            if (!audioTrack) {
-                WarnL << "No audio Track!";
-                return;
-            }
-            auto id = audioTrack->getCodecId();
-            auto br = audioTrack->getBitRate();
-            auto name = audioTrack->getCodecName();
-            auto dur = audioTrack->getDuration();
-            auto index = audioTrack->getIndex();
-            auto num = audioTrack->getFrames();
-            auto samplerate = audioTrack->getAudioSampleRate();
-            auto channels = audioTrack->getAudioChannel();
-            auto sampleBits = audioTrack->getAudioSampleBit();
+                {
+                    auto videoTrack = std::dynamic_pointer_cast<mediakit::VideoTrack>(player->getTrack(mediakit::TrackVideo));
+                    if (!videoTrack) {
+                        WarnL << url_index << " No video Track!";
+                        return;
+                    }
+                    auto extradata = videoTrack->getExtraData();
+                    auto pd = extradata->data();
+                    auto edsz = extradata->size();
+                    auto edstr = extradata->toString();
 
-            audioTrack->addDelegate([](const mediakit::Frame::Ptr &frame) {
-                // please decode audio here
-                if (frame) {
-                    static int frameIndex = 0;
-                    frameIndex++;
-                    auto pts = frame->pts();
-                    auto data = frame->data();
-                    auto size = frame->size();
-                    //InfoL << "get audio Track frame index：" << frameIndex << +", pts:" << frame->pts() << ", keyFrame:" << frame->keyFrame();
+                    auto config = videoTrack->getConfigFrames();
+                    auto c1 = config[0]->data();
+                    auto c2 = config[1]->data();
+
+                    auto id = videoTrack->getCodecId();
+                    auto br = videoTrack->getBitRate();
+                    auto name = videoTrack->getCodecName();
+                    auto dur = videoTrack->getDuration();
+                    auto index = videoTrack->getIndex();
+                    auto num = videoTrack->getFrames();
+                    auto fps = videoTrack->getVideoFps();
+                    auto h = videoTrack->getVideoHeight();
+                    auto w = videoTrack->getVideoWidth();
+                    videoTrack->addDelegate([=, &firstPts](const mediakit::Frame::Ptr &frame) {
+                        // please decode video here
+                        if (frame) {
+                            static int frameIndex = 0;
+                            frameIndex++;
+                            auto pts = frame->pts();
+                            if (firstPts == 0) {
+                                firstPts = pts;
+                            }
+                            auto data = frame->data();
+                            auto size = frame->size();
+                            auto isKey = frame->keyFrame();
+                            auto durts = pts - firstPts;
+                            double ts = durts / (double)90000;
+                            if (isKey) {
+                                InfoL << url_index << " get video Track frame index：" << frameIndex << +", pts:" << ts << +", size:" << size
+                                      << ", keyFrame:" << isKey;
+                            }
+                        }
+                        return true;
+                    });
                 }
-                return true;
+                {
+                    auto audioTrack = std::dynamic_pointer_cast<mediakit::AudioTrack>(player->getTrack(mediakit::TrackAudio));
+                    if (!audioTrack) {
+                        WarnL << url_index << "No audio Track!";
+                        return;
+                    }
+                    auto extradata = audioTrack->getExtraData();
+                    auto pd = extradata->data();
+                    auto edsz = extradata->size();
+                    auto edstr = extradata->toString();
+
+                    auto id = audioTrack->getCodecId();
+                    auto br = audioTrack->getBitRate();
+                    auto name = audioTrack->getCodecName();
+                    auto dur = audioTrack->getDuration();
+                    auto index = audioTrack->getIndex();
+                    auto num = audioTrack->getFrames();
+                    auto samplerate = audioTrack->getAudioSampleRate();
+                    auto channels = audioTrack->getAudioChannel();
+                    auto sampleBits = audioTrack->getAudioSampleBit();
+
+                    audioTrack->addDelegate([=](const mediakit::Frame::Ptr &frame) {
+                        // please decode audio here
+                        if (frame) {
+                            static int frameIndex = 0;
+                            frameIndex++;
+                            auto pts = frame->pts();
+                            auto data = frame->data();
+                            auto size = frame->size();
+                            //InfoL << url_index << " get audio Track frame index：" << frameIndex << +", pts:" << frame->pts()
+                            //      << ", keyFrame:" << frame->keyFrame()
+                            //      << ", size:" << size;
+                        }
+                        return true;
+                    });
+                }
             });
-        }
-    });
 
-    player->setOnShutdown([](const toolkit::SockException &ex) { ErrorL << "OnShutdown:" << ex.what(); });
+            player->setOnShutdown([=](const toolkit::SockException &ex) { ErrorL << url_index << " OnShutdown:" << ex.what(); });
 
-    // RTP transport over TCP
-    (*player)[mediakit::Client::kRtpType] = mediakit::Rtsp::RTP_TCP;
-    player->play(url);
+            // RTP transport over TCP
+            (*player)[mediakit::Client::kRtpType] = mediakit::Rtsp::RTP_TCP;
+            player->play(url);
 
-    });
-    th1.join();
+            int i = 0;
+            while (threadRun) {
+                i++;
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                if (i == 10) {
+                    // player->seekTo((uint32_t)120);
+                    player->speed(16.0);
+                }
 
-    std::thread th([player]() {
-        int i = 0;
-        while (true) {
-            i++;
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            if (i == 10) {
-                player->seekTo((uint32_t)120);
-                //player->speed(16.0);
+                // if (i == 20) {
+                //     player->pause(true);
+                // }
+                // if (i == 25) {
+                //     player->pause(false);
+                // }
+                // if (i == 30) {
+                //     player->pause(true);
+                // }
+                // if (i == 35) {
+                //     player->pause(false);
+                // }
+                // if (i == 20) {
+                //     player->teardown();
+                //     break;
+                // }
             }
-
-            //if (i == 20) {
-            //    player->pause(true);
-            //}
-            //if (i == 25) {
-            //    player->pause(false);
-            //}
-            //if (i == 30) {
-            //    player->pause(true);
-            //}
-            //if (i == 35) {
-            //    player->pause(false);
-            //}
-            if (i == 20) {
-                player->teardown();
-                break;
-            }
-        }
         });
-    th.join();
+        threads.push_back(std::move(th));
+    }
     
+    getchar();
+
+    threadRun = false;
+
+    for (size_t i = 0; i < urls.size(); i++) {
+        threads[i].join();
+    }
+
     static toolkit::semaphore sem;
     signal(SIGINT, [](int) { sem.post(); }); // 设置退出信号
     sem.wait();
@@ -272,69 +311,110 @@ int main(int argc, char *argv[]) {
 #include "../zlmplayer/zlm_player.h"
 #pragma comment(lib, "../../release/windows/Debug/Release/zlmplayer.lib")
 
-int main2(int argc, char *argv[]) {
+void Log(int level, const char *data) {
+    std::cout << "level:" << level;
+}
 
-    std::string url = "rtsp://admin:admin@123@172.16.25.11:554/c2/b1764374400/e1764378000/replay/s0/";
+int main(int argc, char *argv[]) {
+
+    std::string url = "rtsp://admin:admin@123@172.16.45.172:554/c1/b1773302457/e1773302577/replay/s0/";
     // 设置日志  [AUTO-TRANSLATED:50ba02ba]
     // Set log
-    toolkit::Logger::Instance().add(std::make_shared<toolkit::ConsoleChannel>());
-    toolkit::Logger::Instance().setWriter(std::make_shared<toolkit::AsyncLogWriter>());
+    //toolkit::Logger::Instance().add(std::make_shared<toolkit::ConsoleChannel>("ConsoleChannel", toolkit::LogLevel::LWarn));
+    //toolkit::Logger::Instance().setWriter(std::make_shared<toolkit::AsyncLogWriter>());
+    //toolkit::Logger::Instance().setLevel(toolkit::LogLevel::LWarn);
 
-    std::shared_ptr<zlmplayer::ZlmPlayer> player = nullptr;
+    //SetLogCallback(Log);
 
-    std::thread th1([&player, url]() {
-        player = std::move(std::make_shared<zlmplayer::ZlmPlayer>());
-        player->SetOnPlayStatus([](zlmplayer::PlayStatus status) {
+    std::vector<std::string> urls;
+    urls.push_back("rtsp://admin:admin@123@172.16.25.11:554/unicast/c3/s0/live");
+    //urls.push_back("rtsp://admin:admin@123@172.16.45.172:554/c2/b1773306000/e1773306120/replay/s0/");
+    //urls.push_back("rtsp://admin:admin@123@172.16.45.172:554/c3/b1773306000/e1773306120/replay/s0/");
+
+    std::vector<std::shared_ptr<zlmplayer::ZlmPlayer>> players;
+
+    static bool threadRun = true;
+    std::vector<std::thread> threads;
+    for (size_t i = 0; i < urls.size(); i++) {
+        auto th = std::thread([=]() {
+            int url_index = i;
+            std::string url = urls[i];
+            int64_t firstPts = 0;
+            zlmplayer::PlayStatus pstatus = zlmplayer::PlayStatus::None;
+            std::shared_ptr<zlmplayer::ZlmPlayer> player = std::make_shared<zlmplayer::ZlmPlayer>();
+            player->SetOnPlayStatus([=,&pstatus](zlmplayer::PlayStatus status) { 
+                InfoL << url_index << " play status:" << (int64_t)status;
+                pstatus = status;
+                if (status != zlmplayer::PlayStatus::Success) {
+                    ErrorL << url_index << " play error:" << (int64_t)status; 
+                }
+                });
+            player->SetOnPacket([=, &firstPts](const zlmplayer::Packet &packet) {
+                if (packet.mediaType == zlmplayer::kMediaAudio) {
+                    // InfoL << "get audio Track frame:" << (int64_t)packet.pts;
+                } else {
+                    static int frameIndex = 0;
+                    frameIndex++;
+                    auto pts = packet.pts;
+                    if (firstPts == 0) {
+                        firstPts = pts;
+                    }
+                    auto data = packet.data;
+                    auto size = packet.size;
+                    // 1037114756   1662
+                    auto durts = pts - firstPts;
+                    double ts = durts / (double)90000;
+                    if (packet.isKey)
+                        InfoL << url_index << " get video Track frame:" << (int64_t)packet.pts << ", isKey:" << packet.isKey << ", curtime:" << ts;
+                }
             });
-        player->SetOnPacket([](const zlmplayer::Packet&packet) {
 
-            if (packet.mediaType == zlmplayer::kMediaAudio) {
-                InfoL << "get audio Track frame:" << (int64_t)packet.pts;
-            } else {
-                static int frameIndex = 0;
-                frameIndex++;
-                auto pts = packet.pts;
-                auto data = packet.data;
-                auto size = packet.size;
-                InfoL << "get video Track frame:" << (int64_t)packet.pts << ", isKey:" << packet.isKey;
+            zlmplayer::PlayOptions options;
+            options.isTcp = true;
+            player->Play(url, options);
+
+            while (pstatus == zlmplayer::PlayStatus::None) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+            //player->Speed(16.0);
+            int i = 0;
+            while (threadRun) {
+                i++;
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                if (i == 10) {
+                    // player->Seek((uint32_t)120);
+                    //player->Speed(16.0);
+                }
+
+                // if (i == 20) {
+                //     player->Pause();
+                // }
+                // if (i == 25) {
+                //     player->Resume();
+                // }
+                // if (i == 30) {
+                //     player->Pause();
+                // }
+                // if (i == 35) {
+                //     player->Resume();
+                // }
+                // if (i == 10) {
+                //     player->Stop();
+                //     break;
+                // }
             }
             });
-        
-        zlmplayer::PlayOptions options;
-        options.isTcp = true;
-        player->Play(url, options);
-    });
-    th1.join();
+        threads.push_back(std::move(th));
+        //players.push_back(player);
+    }
 
-    std::thread th([player]() {
-        int i = 0;
-        while (true) {
-            i++;
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            if (i == 10) {
-                //player->Seek((uint32_t)120);
-                player->Speed(8.0);
-            }
+    getchar();
 
-            //if (i == 20) {
-            //    player->Pause();
-            //}
-            //if (i == 25) {
-            //    player->Resume();
-            //}
-            //if (i == 30) {
-            //    player->Pause();
-            //}
-            //if (i == 35) {
-            //    player->Resume();
-            //}
-            if (i == 10) {
-                player->Stop();
-                break;
-            }
-        }
-    });
-    th.join();
+    threadRun = false;
+
+    for (size_t i = 0; i < urls.size(); i++) {
+        threads[i].join();
+    }
 
     static toolkit::semaphore sem;
     signal(SIGINT, [](int) { sem.post(); }); // 设置退出信号

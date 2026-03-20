@@ -1,6 +1,45 @@
 #include "zlm_player_impl.h"
 #include "rtsp_player_impl.h"
 
+class CallbackChannel : public toolkit::LogChannel {
+public:
+    CallbackChannel(const std::string &name = "CallbackChannel", toolkit::LogLevel level = toolkit::LogLevel::LTrace);
+    ~CallbackChannel() override = default;
+    void write(const toolkit::Logger &logger, const toolkit::LogContextPtr &logContext) override;
+    void setCallback(LogCallback callback);
+
+private:
+    LogCallback _callback;
+};
+
+CallbackChannel::CallbackChannel(const std::string &name, toolkit::LogLevel level)
+    : LogChannel(name, level)
+    , _callback(NULL) {}
+
+void CallbackChannel::write(const toolkit::Logger &logger, const toolkit::LogContextPtr &ctx) {
+    std::ostringstream oss;
+    format(logger, oss, ctx);
+    if (_callback) {
+        _callback(ctx->_level, oss.str().c_str());
+    }
+}
+
+void CallbackChannel::setCallback(LogCallback callback) {
+    //只设置一次
+    if (!_callback) {
+        _callback = callback;
+    }
+}
+
+void SetLogCallback(LogCallback callback) {
+    if (callback) {
+        auto chanel = std::make_shared<CallbackChannel>();
+        chanel->setCallback(callback);
+        // Logger会添加一个Trace的默认日志通道，并且该日志通道无法更改level，想要控制日志等级，必须主动添加一个日志通道
+        toolkit::Logger::Instance().add(chanel);
+    }
+}
+
 namespace zlmplayer {
 
 ZlmPlayerImpl::ZlmPlayerImpl() {

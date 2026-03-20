@@ -59,21 +59,23 @@ enum ZP_PlayStatus {
     Stop       // 停止播放
 };
 
-typedef void(API_CALL *OnPacket)(ZP_Packet pkt, void *user);
-typedef void(API_CALL *OnPlayStatus)(ZP_PlayStatus status, void *user);
+typedef void (*OnPacket)(ZP_Packet pkt, void *user);
+typedef void (*OnPlayStatus)(ZP_PlayStatus status, void *user);
+typedef void (*OnLogCallback)(int level, const char *data);
 
-ZLMPLAYER_API void *API_CALL ZP_CreateZlmplayer();
-ZLMPLAYER_API void API_CALL ZP_DeleteZlmplayer(void *pPlayer);
-ZLMPLAYER_API void API_CALL ZP_SetOnPacket(void *pPlayer, OnPacket callback, void *user);
-ZLMPLAYER_API void API_CALL ZP_SetOnPlayStatus(void *pPlayer, OnPlayStatus callback, void *user);
-ZLMPLAYER_API bool API_CALL ZP_Play(void *pPlayer, const char *url, ZP_PlayOptions options);
-ZLMPLAYER_API void API_CALL ZP_Stop(void *pPlayer);
-ZLMPLAYER_API void API_CALL ZP_Pause(void *pPlayer);
-ZLMPLAYER_API void API_CALL ZP_Resume(void *pPlayer);
-ZLMPLAYER_API void API_CALL ZP_Seek(void *pPlayer, int seconds);
-ZLMPLAYER_API void API_CALL ZP_Speed(void *pPlayer, double speed);
-ZLMPLAYER_API ZP_StreamInfo API_CALL ZP_GetVideoStream(void *pPlayer);
-ZLMPLAYER_API ZP_StreamInfo API_CALL ZP_GetAudioStream(void *pPlayer);
+ZLMPLAYER_API void ZP_SetLogCallback(OnLogCallback callback); // 设置日志回调只有第一次生效
+ZLMPLAYER_API void *ZP_CreateZlmplayer();
+ZLMPLAYER_API void ZP_DeleteZlmplayer(void *pPlayer);
+ZLMPLAYER_API void ZP_SetOnPacket(void *pPlayer, OnPacket callback, void *user);
+ZLMPLAYER_API void ZP_SetOnPlayStatus(void *pPlayer, OnPlayStatus callback, void *user);
+ZLMPLAYER_API bool ZP_Play(void *pPlayer, const char *url, ZP_PlayOptions options);
+ZLMPLAYER_API void ZP_Stop(void *pPlayer);
+ZLMPLAYER_API void ZP_Pause(void *pPlayer);
+ZLMPLAYER_API void ZP_Resume(void *pPlayer);
+ZLMPLAYER_API void ZP_Seek(void *pPlayer, int seconds);
+ZLMPLAYER_API void ZP_Speed(void *pPlayer, double speed);
+ZLMPLAYER_API ZP_StreamInfo ZP_GetVideoStream(void *pPlayer);
+ZLMPLAYER_API ZP_StreamInfo ZP_GetAudioStream(void *pPlayer);
 
 #ifdef __cplusplus
 }

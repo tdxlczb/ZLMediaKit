@@ -44,6 +44,10 @@
     XX(CodecG729,  TrackAudio, 21, "G729", PSI_STREAM_AUDIO_G729, MOV_OBJECT_NONE)
 */
 
+
+typedef void (*LogCallback)(int level, const char *data);
+ZLMPLAYER_API void SetLogCallback(LogCallback callback); // 设置日志回调只有第一次生效
+
 namespace zlmplayer {
 
 struct PlayOptions {
