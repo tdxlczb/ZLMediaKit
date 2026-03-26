@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2016-present The ZLMediaKit project authors. All Rights Reserved.
  *
  * This file is part of ZLMediaKit(https://github.com/ZLMediaKit/ZLMediaKit).
@@ -36,7 +36,7 @@ bool CommonRtpDecoder::inputRtp(const RtpPacket::Ptr &rtp, bool){
     auto stamp = rtp->getStamp();
     auto seq = rtp->getSeq();
 
-    if (_last_stamp != stamp || _frame->_buffer.size() > _max_frame_size) {
+    if (_last_stamp != stamp || _frame->_buffer.size() > _max_frame_size || rtp->type == TrackAudio) {
         // 时间戳发生变化或者缓存超过MAX_FRAME_SIZE，则清空上帧数据  [AUTO-TRANSLATED:96f15576]
         // If the timestamp changes or the cache exceeds MAX_FRAME_SIZE, clear the previous frame data
         if (!_frame->_buffer.empty()) {
