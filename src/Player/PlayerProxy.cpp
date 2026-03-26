@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2016-present The ZLMediaKit project authors. All Rights Reserved.
  *
  * This file is part of ZLMediaKit(https://github.com/ZLMediaKit/ZLMediaKit).
@@ -216,6 +216,21 @@ void PlayerProxy::play(const string &url) {
         return;
     }
     setDirectProxy();
+}
+
+bool PlayerProxy::seekTo(MediaSource &sender, uint32_t stamp) {
+    MediaPlayer::seekTo(stamp);
+    return true;
+}
+
+bool PlayerProxy::pause(MediaSource &sender, bool pause) {
+    MediaPlayer::pause(pause);
+    return true;
+}
+
+bool PlayerProxy::speed(MediaSource &sender, float speed) {
+    MediaPlayer::speed(speed);
+    return true;
 }
 
 void PlayerProxy::setDirectProxy() {

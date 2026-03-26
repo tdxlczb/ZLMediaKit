@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2016-present The ZLMediaKit project authors. All Rights Reserved.
  *
  * This file is part of ZLMediaKit(https://github.com/ZLMediaKit/ZLMediaKit).
@@ -119,6 +119,16 @@ public:
      * [AUTO-TRANSLATED:a2f0e859]
      */
     void play(const std::string &strUrl) override;
+
+    // 通知拖动进度条  [AUTO-TRANSLATED:561b17f7]
+    // Notify drag progress bar
+    bool seekTo(MediaSource &sender, uint32_t stamp) override;
+    // 通知暂停或恢复  [AUTO-TRANSLATED:ee3c219f]
+    // Notify pause or resume
+    bool pause(MediaSource &sender, bool pause) override;
+    // 通知倍数  [AUTO-TRANSLATED:8f1dab15]
+    // Notify multiple times
+    bool speed(MediaSource &sender, float speed) override;
 
     /**
      * 获取观看总人数
