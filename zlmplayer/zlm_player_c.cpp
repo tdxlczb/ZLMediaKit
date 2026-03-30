@@ -11,8 +11,9 @@ void *ZP_CreateZlmplayer() {
 }
 
 void ZP_DeleteZlmplayer(void *pPlayer) {
-    delete pPlayer;
-    pPlayer = nullptr;
+    zlmplayer::ZlmPlayer *impl = (zlmplayer::ZlmPlayer *)pPlayer;
+    delete impl;
+    impl = nullptr;
 }
 
 void ZP_SetOnPacket(void *pPlayer, OnPacket callback, void *user) {
