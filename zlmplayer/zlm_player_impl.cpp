@@ -121,6 +121,8 @@ bool ZlmPlayerImpl::StreamOpen(const std::string &url, const PlayOptions &option
         m_cv.notify_all();
         if (m_onPlayStatus)
             m_onPlayStatus((PlayStatus)(m_playStatus.load()));
+
+        CreateStream();
     });
 
     m_rtspPlayerImpl->setOnShutdown([this](const toolkit::SockException &ex) {
@@ -142,7 +144,7 @@ bool ZlmPlayerImpl::StreamOpen(const std::string &url, const PlayOptions &option
     m_cv.wait_for(lock, std::chrono::milliseconds(5000), [this]() { return m_playStatus.load() != zlmplayer::PlayStatus::None; });
 
     if (m_playStatus.load() == zlmplayer::PlayStatus::Success) {
-        CreateStream();
+        //CreateStream(); // 放在这可能会导致OnPacket取不到开始的一些帧，必须放到setOnPlayResult回调里
         return true;
     }
     return false;
@@ -224,8 +226,8 @@ void ZlmPlayerImpl::CreateStream() {
 
     auto audioTrack = std::dynamic_pointer_cast<mediakit::AudioTrack>(m_rtspPlayerImpl->getTrack(mediakit::TrackAudio));
     if (audioTrack) {
-        m_audioStream.streamIndex = m_audioStream.streamIndex;
-        m_audioStream.mediaType = m_audioStream.mediaType;
+        m_audioStream.streamIndex = 1;
+        m_audioStream.mediaType = kMediaAudio;
         m_audioStream.codecId = audioTrack->getCodecId();
         m_audioStream.sampleRate = audioTrack->getAudioSampleRate();
         m_audioStream.channels = audioTrack->getAudioChannel();
