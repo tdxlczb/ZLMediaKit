@@ -51,6 +51,10 @@ ZlmPlayerImpl::ZlmPlayerImpl() {
 
 ZlmPlayerImpl::~ZlmPlayerImpl() {}
 
+void ZlmPlayerImpl::SetOnStream(OnStream callback) {
+    m_onStream = callback;
+}
+
 void ZlmPlayerImpl::SetOnPacket(OnPacket callback) {
     m_onPacket = callback;
 }
@@ -71,25 +75,25 @@ void ZlmPlayerImpl::Stop() {
 }
 
 void ZlmPlayerImpl::Pause() {
-    if (m_playStatus != PlayStatus::Success || !m_rtspPlayerImpl)
+    if (m_playStatus.load() != PlayStatus::Success || !m_rtspPlayerImpl)
         return;
     m_rtspPlayerImpl->pause(true);
 }
 
 void ZlmPlayerImpl::Resume() {
-    if (m_playStatus != PlayStatus::Success || !m_rtspPlayerImpl)
+    if (m_playStatus.load() != PlayStatus::Success || !m_rtspPlayerImpl)
         return;
     m_rtspPlayerImpl->pause(false);
 }
 
 void ZlmPlayerImpl::Seek(int seconds) {
-    if (m_playStatus != PlayStatus::Success || !m_rtspPlayerImpl)
+    if (m_playStatus.load() != PlayStatus::Success || !m_rtspPlayerImpl)
         return;
     m_rtspPlayerImpl->seekTo((uint32_t)seconds);
 }
 
 void ZlmPlayerImpl::Speed(double speed) {
-    if (m_playStatus != PlayStatus::Success || !m_rtspPlayerImpl)
+    if (m_playStatus.load() != PlayStatus::Success || !m_rtspPlayerImpl)
         return;
     m_rtspPlayerImpl->speed(speed);
 }
@@ -110,107 +114,20 @@ bool ZlmPlayerImpl::StreamOpen(const std::string &url, const PlayOptions &option
         if (ex) {
             m_playStatus = PlayStatus::Failed;
             if (m_onPlayStatus)
-                m_onPlayStatus(m_playStatus);
+                m_onPlayStatus((PlayStatus)(m_playStatus.load()));
             return;
         }
-        auto videoTrack = std::dynamic_pointer_cast<mediakit::VideoTrack>(m_rtspPlayerImpl->getTrack(mediakit::TrackVideo));
-        if (videoTrack) {
-            m_videoStream.mediaType = kMediaVideo;
-            m_videoStream.codecId = videoTrack->getCodecId();
-            m_videoStream.width = videoTrack->getVideoWidth();
-            m_videoStream.height = videoTrack->getVideoHeight();
-            m_videoStream.frameFps = videoTrack->getVideoFps();
-            m_videoStream.clockRate = m_rtspPlayerImpl->getVideoClockRate();
-
-            m_videoExtraBuf->clear();
-            auto configs = videoTrack->getConfigFrames();
-            for (size_t i = 0; i < configs.size(); i++) {
-                m_videoExtraBuf->push((uint8_t *)configs[i]->data(), configs[i]->size());
-            }
-            if (m_videoExtraBuf->size() <= 0) {
-                auto extra = videoTrack->getExtraData();
-                m_videoExtraBuf->push((uint8_t *)extra->data(), extra->size());
-            }
-            m_videoStream.extradata = m_videoExtraBuf->data();
-            m_videoStream.extrasize = m_videoExtraBuf->size();
-            videoTrack->addDelegate([this](const mediakit::Frame::Ptr &frame) {
-                if (frame && m_onPacket) {
-                    uint8_t *data = (uint8_t *)frame->data();
-                    size_t size = frame->size();
-                    bool isKey = frame->keyFrame();
-                    //可丢弃的帧
-                    if (frame->dropAble()) {
-                        return true;
-                    }
-                    // 配置帧，譬如sps pps vps需要和关键帧一起发送，否则解码器解码可能会出现异常
-                    if (frame->configFrame()) {
-                        m_packetPts = frame->pts();
-                        m_packetBuf->push(data, size);
-                        return true;
-                    } 
-                    if (m_packetBuf->size() > 0 && (frame->pts() == m_packetPts)) {
-                        m_packetPts = frame->pts();
-                        m_packetBuf->push(data, size);
-                        data = m_packetBuf->data();
-                        size = m_packetBuf->size();
-                    }
-                    Packet pkt;
-                    pkt.mediaType = kMediaVideo;
-                    pkt.isKey = isKey;
-                    pkt.data = data;
-                    pkt.size = size;
-                    pkt.dts = frame->dts();
-                    pkt.pts = frame->pts();
-                    pkt.clockRate = m_videoStream.clockRate;
-                    m_onPacket(pkt);
-
-                    m_packetBuf->clear();
-                    m_packetPts = 0;
-                }
-                return true;
-            });
-        }
-
-        auto audioTrack = std::dynamic_pointer_cast<mediakit::AudioTrack>(m_rtspPlayerImpl->getTrack(mediakit::TrackAudio));
-        if (audioTrack) {
-            m_audioStream.mediaType = kMediaAudio;
-            m_audioStream.codecId = audioTrack->getCodecId();
-            m_audioStream.sampleRate = audioTrack->getAudioSampleRate();
-            m_audioStream.channels = audioTrack->getAudioChannel();
-            m_audioStream.sampleBit = audioTrack->getAudioSampleBit();
-            m_audioStream.clockRate = m_audioStream.sampleRate;
-
-            m_audioExtraBuf->clear();
-            auto extra = audioTrack->getExtraData();
-            m_audioExtraBuf->push((uint8_t *)extra->data(), extra->size());
-            m_audioStream.extradata = m_audioExtraBuf->data();
-            m_audioStream.extrasize = m_audioExtraBuf->size();
-            audioTrack->addDelegate([this](const mediakit::Frame::Ptr &frame) {
-                if (frame && m_onPacket) {
-                    Packet pkt;
-                    pkt.mediaType = kMediaAudio;
-                    pkt.isKey = frame->keyFrame();
-                    pkt.data = (uint8_t *)frame->data();
-                    pkt.size = frame->size();
-                    pkt.dts = frame->dts();
-                    pkt.pts = frame->pts();
-                    pkt.clockRate = m_audioStream.clockRate;
-                    m_onPacket(pkt);
-                }
-                return true;
-            });
-        }
-
         m_playStatus = PlayStatus::Success;
+        m_cv.notify_all();
         if (m_onPlayStatus)
-            m_onPlayStatus(m_playStatus);
+            m_onPlayStatus((PlayStatus)(m_playStatus.load()));
     });
 
     m_rtspPlayerImpl->setOnShutdown([this](const toolkit::SockException &ex) {
         ErrorL << "OnShutdown:" << ex.what();
         m_playStatus = PlayStatus::Stop;
         if (m_onPlayStatus)
-            m_onPlayStatus(m_playStatus);
+            m_onPlayStatus((PlayStatus)(m_playStatus.load()));
     });
 
     if (options.isTcp) {
@@ -220,7 +137,15 @@ bool ZlmPlayerImpl::StreamOpen(const std::string &url, const PlayOptions &option
         (*m_rtspPlayerImpl)[mediakit::Client::kRtpType] = mediakit::Rtsp::RTP_UDP;
     }
     m_rtspPlayerImpl->play(url);
-    return true;
+
+    std::unique_lock<std::mutex> lock(m_mutex);
+    m_cv.wait_for(lock, std::chrono::milliseconds(5000), [this]() { return m_playStatus.load() != zlmplayer::PlayStatus::None; });
+
+    if (m_playStatus.load() == zlmplayer::PlayStatus::Success) {
+        CreateStream();
+        return true;
+    }
+    return false;
 }
 
 void ZlmPlayerImpl::StreamClose() {
@@ -229,6 +154,108 @@ void ZlmPlayerImpl::StreamClose() {
     }
     m_playStatus = PlayStatus::None;
     m_rtspPlayerImpl = nullptr;
+}
+
+void ZlmPlayerImpl::CreateStream() {
+
+    auto videoTrack = std::dynamic_pointer_cast<mediakit::VideoTrack>(m_rtspPlayerImpl->getTrack(mediakit::TrackVideo));
+    if (videoTrack) {
+        m_videoStream.streamIndex = 0;
+        m_videoStream.mediaType = kMediaVideo;
+        m_videoStream.codecId = videoTrack->getCodecId();
+        m_videoStream.width = videoTrack->getVideoWidth();
+        m_videoStream.height = videoTrack->getVideoHeight();
+        m_videoStream.frameFps = videoTrack->getVideoFps();
+        m_videoStream.clockRate = m_rtspPlayerImpl->getVideoClockRate();
+
+        m_videoExtraBuf->clear();
+        auto configs = videoTrack->getConfigFrames();
+        for (size_t i = 0; i < configs.size(); i++) {
+            m_videoExtraBuf->push((uint8_t *)configs[i]->data(), configs[i]->size());
+        }
+        if (m_videoExtraBuf->size() <= 0) {
+            auto extra = videoTrack->getExtraData();
+            m_videoExtraBuf->push((uint8_t *)extra->data(), extra->size());
+        }
+        m_videoStream.extradata = m_videoExtraBuf->data();
+        m_videoStream.extrasize = m_videoExtraBuf->size();
+
+        if (m_onStream)
+            m_onStream(m_videoStream);
+
+        videoTrack->addDelegate([this](const mediakit::Frame::Ptr &frame) {
+            if (frame && m_onPacket) {
+                uint8_t *data = (uint8_t *)frame->data();
+                size_t size = frame->size();
+                bool isKey = frame->keyFrame();
+                // 可丢弃的帧
+                if (frame->dropAble()) {
+                    return true;
+                }
+                // 配置帧，譬如sps pps vps需要和关键帧一起发送，否则解码器解码可能会出现异常
+                if (frame->configFrame()) {
+                    m_packetPts = frame->pts();
+                    m_packetBuf->push(data, size);
+                    return true;
+                }
+                if (m_packetBuf->size() > 0 && (frame->pts() == m_packetPts)) {
+                    m_packetPts = frame->pts();
+                    m_packetBuf->push(data, size);
+                    data = m_packetBuf->data();
+                    size = m_packetBuf->size();
+                }
+                Packet pkt;
+                pkt.streamIndex = m_videoStream.streamIndex;
+                pkt.mediaType = m_videoStream.mediaType;
+                pkt.isKey = isKey;
+                pkt.data = data;
+                pkt.size = size;
+                pkt.dts = frame->dts();
+                pkt.pts = frame->pts();
+                pkt.clockRate = m_videoStream.clockRate;
+                m_onPacket(pkt);
+
+                m_packetBuf->clear();
+                m_packetPts = 0;
+            }
+            return true;
+        });
+    }
+
+    auto audioTrack = std::dynamic_pointer_cast<mediakit::AudioTrack>(m_rtspPlayerImpl->getTrack(mediakit::TrackAudio));
+    if (audioTrack) {
+        m_audioStream.streamIndex = m_audioStream.streamIndex;
+        m_audioStream.mediaType = m_audioStream.mediaType;
+        m_audioStream.codecId = audioTrack->getCodecId();
+        m_audioStream.sampleRate = audioTrack->getAudioSampleRate();
+        m_audioStream.channels = audioTrack->getAudioChannel();
+        m_audioStream.sampleBit = audioTrack->getAudioSampleBit();
+        m_audioStream.clockRate = m_audioStream.sampleRate;
+
+        m_audioExtraBuf->clear();
+        auto extra = audioTrack->getExtraData();
+        m_audioExtraBuf->push((uint8_t *)extra->data(), extra->size());
+        m_audioStream.extradata = m_audioExtraBuf->data();
+        m_audioStream.extrasize = m_audioExtraBuf->size();
+        if (m_onStream)
+            m_onStream(m_audioStream);
+
+        audioTrack->addDelegate([this](const mediakit::Frame::Ptr &frame) {
+            if (frame && m_onPacket) {
+                Packet pkt;
+                pkt.streamIndex = 1;
+                pkt.mediaType = kMediaAudio;
+                pkt.isKey = frame->keyFrame();
+                pkt.data = (uint8_t *)frame->data();
+                pkt.size = frame->size();
+                pkt.dts = frame->dts();
+                pkt.pts = frame->pts();
+                pkt.clockRate = m_audioStream.clockRate;
+                m_onPacket(pkt);
+            }
+            return true;
+        });
+    }
 }
 
 } // namespace zlmplayer
