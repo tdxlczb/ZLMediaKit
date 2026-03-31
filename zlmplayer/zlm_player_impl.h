@@ -50,6 +50,7 @@ public:
     ZlmPlayerImpl();
     ~ZlmPlayerImpl();
 
+    void SetOnStream(OnStream callback);
     void SetOnPacket(OnPacket callback);
     void SetOnPlayStatus(OnPlayStatus callback);
     bool Play(const std::string &url, const PlayOptions &options);
@@ -64,12 +65,14 @@ public:
 private:
     bool StreamOpen(const std::string &url, const PlayOptions &options);
     void StreamClose();
+    void CreateStream();
 
 private:
+    OnStream m_onStream = nullptr;
     OnPacket m_onPacket = nullptr;
     OnPlayStatus m_onPlayStatus = nullptr;
     std::shared_ptr<RtspPlayerImpl> m_rtspPlayerImpl;
-    PlayStatus m_playStatus = PlayStatus::None;
+    std::atomic_int m_playStatus = PlayStatus::None;
     std::mutex m_mutex;
     std::condition_variable m_cv;
     StreamInfo m_videoStream;

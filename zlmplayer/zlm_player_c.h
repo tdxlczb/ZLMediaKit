@@ -29,6 +29,7 @@ typedef struct ZP_PlayOptionsC {
 } ZP_PlayOptions;
 
 typedef struct ZP_StreamInfoC {
+    int streamIndex = -1;
     int mediaType = -1;
     int codecId = -1; // 使用zlm的CodecId
     int width = 0;
@@ -43,6 +44,7 @@ typedef struct ZP_StreamInfoC {
 } ZP_StreamInfo;
 
 typedef struct ZP_PacketC {
+    int streamIndex = -1;
     int mediaType = -1;
     bool isKey = false;
     uint8_t *data = nullptr;
@@ -59,6 +61,7 @@ enum ZP_PlayStatus {
     Stop       // 停止播放
 };
 
+typedef void (*OnStream)(ZP_StreamInfo info, void *user);
 typedef void (*OnPacket)(ZP_Packet pkt, void *user);
 typedef void (*OnPlayStatus)(ZP_PlayStatus status, void *user);
 typedef void (*OnLogCallback)(int level, const char *data);
@@ -66,6 +69,7 @@ typedef void (*OnLogCallback)(int level, const char *data);
 ZLMPLAYER_API void ZP_SetLogCallback(OnLogCallback callback); // 设置日志回调只有第一次生效
 ZLMPLAYER_API void *ZP_CreateZlmplayer();
 ZLMPLAYER_API void ZP_DeleteZlmplayer(void *pPlayer);
+ZLMPLAYER_API void ZP_SetOnStream(void *pPlayer, OnStream callback, void *user);
 ZLMPLAYER_API void ZP_SetOnPacket(void *pPlayer, OnPacket callback, void *user);
 ZLMPLAYER_API void ZP_SetOnPlayStatus(void *pPlayer, OnPlayStatus callback, void *user);
 ZLMPLAYER_API bool ZP_Play(void *pPlayer, const char *url, ZP_PlayOptions options);

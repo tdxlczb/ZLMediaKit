@@ -9,6 +9,10 @@ ZlmPlayer::ZlmPlayer() {
 
 ZlmPlayer::~ZlmPlayer() {}
 
+void ZlmPlayer::SetOnStream(OnStream callback) {
+    m_impl->SetOnStream(callback);
+}
+
 void ZlmPlayer::SetOnPacket(OnPacket callback) {
     m_impl->SetOnPacket(callback);
 }

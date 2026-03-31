@@ -16,12 +16,35 @@ void ZP_DeleteZlmplayer(void *pPlayer) {
     impl = nullptr;
 }
 
+void ZP_SetOnStream(void *pPlayer, OnStream callback, void *user) {
+    zlmplayer::ZlmPlayer *impl = (zlmplayer::ZlmPlayer *)pPlayer;
+    if (!impl)
+        return;
+    impl->SetOnStream([callback, user](const zlmplayer::StreamInfo &sinfo) {
+        ZP_StreamInfo info;
+        info.streamIndex = sinfo.streamIndex;
+        info.mediaType = sinfo.mediaType;
+        info.codecId = sinfo.codecId;
+        info.width = sinfo.width;
+        info.height = sinfo.height;
+        info.frameFps = sinfo.frameFps;
+        info.sampleRate = sinfo.sampleRate;
+        info.channels = sinfo.channels;
+        info.sampleBit = sinfo.sampleBit;
+        info.clockRate = sinfo.clockRate;
+        info.extradata = sinfo.extradata; // 注意，sinfo是局部变量，extradata不能使用string的data()，否则调用该接口获取的extradata可能会数据异常
+        info.extrasize = sinfo.extrasize;
+        callback(info, user);
+    });
+}
+
 void ZP_SetOnPacket(void *pPlayer, OnPacket callback, void *user) {
     zlmplayer::ZlmPlayer *impl = (zlmplayer::ZlmPlayer *)pPlayer;
     if (!impl)
         return;
     impl->SetOnPacket([callback, user](const zlmplayer::Packet &pkt) {
         ZP_Packet cpkt;
+        cpkt.streamIndex = pkt.streamIndex;
         cpkt.mediaType = pkt.mediaType;
         cpkt.isKey = pkt.isKey;
         cpkt.data = pkt.data;
@@ -90,6 +113,7 @@ ZP_StreamInfo ZP_GetVideoStream(void *pPlayer) {
     if (!impl)
         return info;
     zlmplayer::StreamInfo sinfo = impl->GetVideoStream();
+    info.streamIndex = sinfo.streamIndex;
     info.mediaType = sinfo.mediaType;
     info.codecId = sinfo.codecId;
     info.width = sinfo.width;
@@ -110,6 +134,7 @@ ZP_StreamInfo ZP_GetAudioStream(void *pPlayer) {
     if (!impl)
         return info;
     zlmplayer::StreamInfo sinfo = impl->GetAudioStream();
+    info.streamIndex = sinfo.streamIndex;
     info.mediaType = sinfo.mediaType;
     info.codecId = sinfo.codecId;
     info.width = sinfo.width;

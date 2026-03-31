@@ -62,6 +62,7 @@ const MediaType kMediaAudio = 1;
 using CodecId = int;
 
 struct StreamInfo {
+    int streamIndex = -1;
     MediaType mediaType = kMediaNone; // 媒体类型
     CodecId codecId = -1; // 使用zlm的CodecId
     int width = 0;
@@ -76,6 +77,7 @@ struct StreamInfo {
 };
 
 struct Packet {
+    int streamIndex = -1;
     MediaType mediaType = kMediaNone;
     bool isKey = false;
     uint8_t *data = nullptr;
@@ -92,6 +94,7 @@ enum PlayStatus {
     Stop // 停止播放
 };
 
+using OnStream = std::function<void(const StreamInfo &info)>;
 using OnPacket = std::function<void(const Packet &pkt)>;
 using OnPlayStatus = std::function<void(PlayStatus status)>;
 
@@ -102,6 +105,7 @@ public:
     ZlmPlayer();
     ~ZlmPlayer();
 
+    void SetOnStream(OnStream callback);
     void SetOnPacket(OnPacket callback);
     void SetOnPlayStatus(OnPlayStatus callback);
     bool Play(const std::string &url, const PlayOptions &options = PlayOptions());
