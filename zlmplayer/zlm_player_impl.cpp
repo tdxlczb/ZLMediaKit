@@ -17,6 +17,10 @@ CallbackChannel::CallbackChannel(const std::string &name, toolkit::LogLevel leve
     , _callback(NULL) {}
 
 void CallbackChannel::write(const toolkit::Logger &logger, const toolkit::LogContextPtr &ctx) {
+    // 一次性播放很多路流时，偶发会出现ctx是野指针的情况，未定位到原因，这里针对野指针指向的值进行筛选拦截
+    if (!ctx || ctx->_level < 0 || ctx->_level > 4) {
+        return;
+    }
     std::ostringstream oss;
     format(logger, oss, ctx);
     if (_callback) {
@@ -33,10 +37,12 @@ void CallbackChannel::setCallback(LogCallback callback) {
 
 void SetLogCallback(LogCallback callback) {
     if (callback) {
-        auto chanel = std::make_shared<CallbackChannel>();
-        chanel->setCallback(callback);
-        // Logger会添加一个Trace的默认日志通道，并且该日志通道无法更改level，想要控制日志等级，必须主动添加一个日志通道
-        toolkit::Logger::Instance().add(chanel);
+        if (!toolkit::Logger::Instance().get("CallbackChannel")) {
+            auto chanel = std::make_shared<CallbackChannel>();
+            chanel->setCallback(callback);
+            // Logger会添加一个Trace的默认日志通道，并且该日志通道无法更改level，想要控制日志等级，必须主动添加一个日志通道
+            toolkit::Logger::Instance().add(chanel);
+        }
     }
 }
 
@@ -141,7 +147,7 @@ bool ZlmPlayerImpl::StreamOpen(const std::string &url, const PlayOptions &option
     m_rtspPlayerImpl->play(url);
 
     std::unique_lock<std::mutex> lock(m_mutex);
-    m_cv.wait_for(lock, std::chrono::milliseconds(5000), [this]() { return m_playStatus.load() != zlmplayer::PlayStatus::None; });
+    m_cv.wait_for(lock, std::chrono::milliseconds(10000), [this]() { return m_playStatus.load() != zlmplayer::PlayStatus::None; });
 
     if (m_playStatus.load() == zlmplayer::PlayStatus::Success) {
         //CreateStream(); // 放在这可能会导致OnPacket取不到开始的一些帧，必须放到setOnPlayResult回调里
