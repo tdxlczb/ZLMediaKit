@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2016-present The ZLMediaKit project authors. All Rights Reserved.
  *
  * This file is part of ZLMediaKit(https://github.com/ZLMediaKit/ZLMediaKit).
@@ -375,10 +375,11 @@ void MediaSinkDelegate::resetTracks() {
 
 ///////////////////////////Demuxer//////////////////////////////
 
-void Demuxer::setTrackListener(TrackListener *listener, bool wait_track_ready) {
+void Demuxer::setTrackListener(TrackListener *listener, bool wait_track_ready, bool add_mute_audio) {
     if (wait_track_ready) {
         auto sink = std::make_shared<MediaSinkDelegate>();
         sink->setTrackListener(listener);
+        sink->enableMuteAudio(add_mute_audio);
         _sink = std::move(sink);
     }
     _listener = listener;
