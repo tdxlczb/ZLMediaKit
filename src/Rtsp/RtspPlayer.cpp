@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2016-present The ZLMediaKit project authors. All Rights Reserved.
  *
  * This file is part of ZLMediaKit(https://github.com/ZLMediaKit/ZLMediaKit).
@@ -789,7 +789,13 @@ void RtspPlayer::sendRtspRequest(const string &cmd, const string &url, const Str
     }
 
     printer << "\r\n";
-    SockSender::send(std::move(printer));
+
+    // socke的send消息需要异步发送，同步调用有可能造成死锁
+    // 异步调用不能捕获局部变量的引用，需要捕获值
+    std::string printer_ = printer;
+    getPoller()->async([this, printer_]() {
+        SockSender::send(std::move(printer_)); 
+        });
 }
 
 void RtspPlayer::onBeforeRtpSorted(const RtpPacket::Ptr &rtp, int track_idx) {
