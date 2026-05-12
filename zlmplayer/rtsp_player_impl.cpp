@@ -76,7 +76,7 @@ int RtspPlayerImpl::getVideoClockRate() {
 bool RtspPlayerImpl::onCheckSDP(const std::string &sdp) {
     RtspPlayer::setDisableNtpStamp();
     _demuxer = std::make_shared<mediakit::RtspDemuxer>();
-    _demuxer->setTrackListener(this, (*this)[mediakit::Client::kWaitTrackReady].as<bool>());
+    _demuxer->setTrackListener(this, (*this)[mediakit::Client::kWaitTrackReady].as<bool>(), false);
     _demuxer->loadSdp(sdp);
     return true;
 }
