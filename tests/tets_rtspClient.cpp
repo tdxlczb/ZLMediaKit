@@ -127,7 +127,7 @@ bool RtspPlayerImp::onCheckSDP(const std::string &sdp) {
         _rtsp_media_src->setSdp(sdp);
     }
     _demuxer = std::make_shared<mediakit::RtspDemuxer>();
-    _demuxer->setTrackListener(this, (*this)[mediakit::Client::kWaitTrackReady].as<bool>());
+    _demuxer->setTrackListener(this, (*this)[mediakit::Client::kWaitTrackReady].as<bool>(), false);
     _demuxer->loadSdp(sdp);
     return true;
 }
@@ -155,9 +155,9 @@ int main01(int argc, char *argv[]) {
     toolkit::Logger::Instance().setWriter(std::make_shared<toolkit::AsyncLogWriter>());
 
     std::vector<std::string> urls;
-    urls.push_back("rtsp://admin:admin@123@172.16.45.172:554/c1/b1773302457/e1773302577/replay/s0/");
-    urls.push_back("rtsp://admin:admin@123@172.16.45.172:554/c2/b1773302457/e1773302577/replay/s0/");
-    urls.push_back("rtsp://admin:admin@123@172.16.45.172:554/c3/b1773302457/e1773302577/replay/s0/");
+    //urls.push_back("rtsp://admin:admin@123@172.16.25.11:554/c5/b1778457600/e1778515199/replay/s0/");
+    urls.push_back("rtsp://admin:admin@123@172.16.25.11:554/c1/b1778515200/e1778601599/replay/s0/");
+    //urls.push_back("rtsp://admin:admin@123@172.16.45.172:554/c3/b1773302457/e1773302577/replay/s0/");
 
     static bool threadRun = true;
     std::vector<std::thread> threads;
@@ -269,8 +269,8 @@ int main01(int argc, char *argv[]) {
                 i++;
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 if (i == 10) {
-                    // player->seekTo((uint32_t)120);
-                    player->speed(16.0);
+                     player->seekTo((uint32_t)120);
+                    //player->speed(4.0);
                 }
 
                 // if (i == 20) {
@@ -327,9 +327,9 @@ int main(int argc, char *argv[]) {
     //SetLogCallback(Log);
 
     std::vector<std::string> urls;
-    urls.push_back("rtsp://admin:admin@123@172.16.25.11:554/unicast/c3/s0/live");
-    //urls.push_back("rtsp://admin:admin@123@172.16.45.172:554/c2/b1773306000/e1773306120/replay/s0/");
-    //urls.push_back("rtsp://admin:admin@123@172.16.45.172:554/c3/b1773306000/e1773306120/replay/s0/");
+    //urls.push_back("rtsp://admin:admin@123@172.16.45.172:554/c1/b1778428800/e1778515199/replay/s0/");
+    urls.push_back("rtsp://admin:admin@123@172.16.25.11:554/c1/b1778515200/e1778601599/replay/s0/");
+    //urls.push_back("rtsp://admin:admin@123@172.16.25.11:554/unicast/c3/s0/live");
 
     std::vector<std::shared_ptr<zlmplayer::ZlmPlayer>> players;
 
@@ -347,6 +347,15 @@ int main(int argc, char *argv[]) {
                 pstatus = status;
                 if (status != zlmplayer::PlayStatus::Success) {
                     ErrorL << url_index << " play error:" << (int64_t)status; 
+                }
+                });
+            player->SetOnStream([=](const zlmplayer::StreamInfo &info) {
+                if (info.mediaType == zlmplayer::kMediaVideo) {
+                    InfoL << "====== get video Track ======";
+                    Sleep(1000);
+                } else if (info.mediaType == zlmplayer::kMediaAudio) {
+                    InfoL << "====== get audio Track ======";
+                
                 }
                 });
             player->SetOnPacket([=, &firstPts](const zlmplayer::Packet &packet) {
