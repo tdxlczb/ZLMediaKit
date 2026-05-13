@@ -1,5 +1,6 @@
 # 为了方便查看自己的改动，每次同步源zlm代码时，使用rebase，而不是merge，同时记录源zlm的commit
 commit: 8c9439571032a0db7d678a0104443125dc0d6916
+commit: 37ea51a2ec35ca57e4f3f18c972f2b01dfb577aa
 
 # 如果使用zlm的动态库，main函数结束时，进程无法退出
 
