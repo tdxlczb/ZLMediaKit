@@ -1,8 +1,8 @@
 #pragma once
 #include "zlm_player.h"
 #include <condition_variable>
-#include <memory>
 #include <cstring>
+#include <memory>
 
 namespace zlmplayer {
 
@@ -10,8 +10,7 @@ class RawBuffer {
 public:
     RawBuffer() {
         m_capacity = 1024 * 1024;
-        m_buf = new uint8_t[m_capacity];
-        memset(m_buf, 0, m_capacity);
+        m_buf = new (std::nothrow) uint8_t[m_capacity] {};
     };
     ~RawBuffer() {
         delete[] m_buf;
@@ -22,19 +21,26 @@ public:
         size_t new_size = m_size + size;
         if (m_capacity < new_size) {
             m_capacity = new_size;
-            uint8_t *buf = new uint8_t[m_capacity];
+            uint8_t *buf = new (std::nothrow) uint8_t[m_capacity] {};
+            if (!buf)
+                return;
             memcpy(buf, m_buf, m_size);
             delete[] m_buf;
             m_buf = buf;
         }
-        memcpy(m_buf + m_size, data, size);
+        if (m_buf)
+            memcpy(m_buf + m_size, data, size);
         m_size = new_size;
     }
 
     uint8_t *data() { return m_buf; }
     size_t size() { return m_size; }
     void clear() {
-        memset(m_buf, 0, m_capacity);
+        if (!m_buf) {
+            m_buf = new (std::nothrow) uint8_t[m_capacity] {};
+        } else {
+            memset(m_buf, 0, m_capacity);
+        }
         m_size = 0;
     }
 
