@@ -3,51 +3,51 @@
 #include <condition_variable>
 #include <cstring>
 #include <memory>
+#include <vector>
 
 namespace zlmplayer {
 
 class RawBuffer {
 public:
     RawBuffer() {
-        m_capacity = 1024 * 1024;
-        m_buf = new (std::nothrow) uint8_t[m_capacity] {};
+        m_buf.clear();
+        m_buf.reserve(1024 * 1024);
     };
     ~RawBuffer() {
-        delete[] m_buf;
-        m_buf = nullptr;
+        m_buf.clear();
+        m_buf.shrink_to_fit();
     };
 
-    void push(uint8_t *data, size_t size) {
-        size_t new_size = m_size + size;
-        if (m_capacity < new_size) {
-            m_capacity = new_size;
-            uint8_t *buf = new (std::nothrow) uint8_t[m_capacity] {};
-            if (!buf)
-                return;
-            memcpy(buf, m_buf, m_size);
-            delete[] m_buf;
-            m_buf = buf;
-        }
-        if (m_buf)
-            memcpy(m_buf + m_size, data, size);
-        m_size = new_size;
+    // 禁止拷贝，防止多线程误操作
+    RawBuffer(const RawBuffer &) = delete;
+    RawBuffer &operator=(const RawBuffer &) = delete;
+
+    bool push(const uint8_t *data, int len) {
+        std::lock_guard<std::mutex> lock(m_mtx);
+        if (!data || len <= 0)
+            return false;
+        // 追加到现有数据后面
+        m_buf.insert(m_buf.end(), data, data + len);
+        return true;
     }
 
-    uint8_t *data() { return m_buf; }
-    size_t size() { return m_size; }
+    uint8_t *data() {
+        std::lock_guard<std::mutex> lock(m_mtx);
+        return m_buf.data();
+    }
+    size_t size() {
+        std::lock_guard<std::mutex> lock(m_mtx);
+        return m_buf.size();
+    }
     void clear() {
-        if (!m_buf) {
-            m_buf = new (std::nothrow) uint8_t[m_capacity] {};
-        } else {
-            memset(m_buf, 0, m_capacity);
-        }
-        m_size = 0;
+        std::lock_guard<std::mutex> lock(m_mtx);
+        if (m_buf.size() > 0)
+            m_buf.clear();
     }
 
 private:
-    uint8_t *m_buf = nullptr;
-    size_t m_size = 0;
-    size_t m_capacity = 0;
+    mutable std::mutex m_mtx;
+    std::vector<uint8_t> m_buf;
 };
 
 class RtspPlayerImpl;
@@ -81,6 +81,7 @@ private:
     std::atomic_int m_playStatus = PlayStatus::None;
     std::mutex m_mutex;
     std::condition_variable m_cv;
+    std::mutex m_eventMutex;
     StreamInfo m_videoStream;
     StreamInfo m_audioStream;
     std::unique_ptr<RawBuffer> m_videoExtraBuf;
