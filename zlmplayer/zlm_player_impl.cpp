@@ -58,14 +58,17 @@ ZlmPlayerImpl::ZlmPlayerImpl() {
 ZlmPlayerImpl::~ZlmPlayerImpl() {}
 
 void ZlmPlayerImpl::SetOnStream(OnStream callback) {
+    std::lock_guard<std::mutex> lock(m_eventMutex);
     m_onStream = callback;
 }
 
 void ZlmPlayerImpl::SetOnPacket(OnPacket callback) {
+    std::lock_guard<std::mutex> lock(m_eventMutex);
     m_onPacket = callback;
 }
 
 void ZlmPlayerImpl::SetOnPlayStatus(OnPlayStatus callback) {
+    std::lock_guard<std::mutex> lock(m_eventMutex);
     m_onPlayStatus = callback;
 }
 
@@ -75,8 +78,11 @@ bool ZlmPlayerImpl::Play(const std::string &url, const PlayOptions &options) {
 }
 
 void ZlmPlayerImpl::Stop() {
-    m_onPacket = nullptr;
-    m_onPlayStatus = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(m_eventMutex);
+        m_onPacket = nullptr;
+        m_onPlayStatus = nullptr;
+    }
     StreamClose();
 }
 
@@ -119,21 +125,25 @@ bool ZlmPlayerImpl::StreamOpen(const std::string &url, const PlayOptions &option
         InfoL << "OnPlayResult:" << ex.what();
         if (ex) {
             m_playStatus = PlayStatus::Failed;
+            std::lock_guard<std::mutex> lock(m_eventMutex);
             if (m_onPlayStatus)
                 m_onPlayStatus((PlayStatus)(m_playStatus.load()));
             return;
         }
         m_playStatus = PlayStatus::Success;
         m_cv.notify_all();
-        if (m_onPlayStatus)
-            m_onPlayStatus((PlayStatus)(m_playStatus.load()));
-
+        {
+            std::lock_guard<std::mutex> lock(m_eventMutex);
+            if (m_onPlayStatus)
+                m_onPlayStatus((PlayStatus)(m_playStatus.load()));
+        }
         CreateStream();
     });
 
     m_rtspPlayerImpl->setOnShutdown([this](const toolkit::SockException &ex) {
         ErrorL << "OnShutdown:" << ex.what();
         m_playStatus = PlayStatus::Stop;
+        std::lock_guard<std::mutex> lock(m_eventMutex);
         if (m_onPlayStatus)
             m_onPlayStatus((PlayStatus)(m_playStatus.load()));
     });
@@ -161,11 +171,10 @@ void ZlmPlayerImpl::StreamClose() {
         m_rtspPlayerImpl->teardown();
     }
     m_playStatus = PlayStatus::None;
-    m_rtspPlayerImpl = nullptr;
 }
 
 void ZlmPlayerImpl::CreateStream() {
-
+    std::lock_guard<std::mutex> lock(m_eventMutex);
     auto videoTrack = std::dynamic_pointer_cast<mediakit::VideoTrack>(m_rtspPlayerImpl->getTrack(mediakit::TrackVideo));
     if (videoTrack) {
         m_videoStream.streamIndex = 0;
@@ -192,6 +201,7 @@ void ZlmPlayerImpl::CreateStream() {
             m_onStream(m_videoStream);
 
         videoTrack->addDelegate([this](const mediakit::Frame::Ptr &frame) {
+            std::lock_guard<std::mutex> lock(m_eventMutex);
             if (frame && m_onPacket) {
                 uint8_t *data = (uint8_t *)frame->data();
                 size_t size = frame->size();
@@ -249,6 +259,7 @@ void ZlmPlayerImpl::CreateStream() {
             m_onStream(m_audioStream);
 
         audioTrack->addDelegate([this](const mediakit::Frame::Ptr &frame) {
+            std::lock_guard<std::mutex> lock(m_eventMutex);
             if (frame && m_onPacket) {
                 Packet pkt;
                 pkt.streamIndex = 1;
