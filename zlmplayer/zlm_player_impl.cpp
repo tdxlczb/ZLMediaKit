@@ -18,9 +18,21 @@ CallbackChannel::CallbackChannel(const std::string &name, toolkit::LogLevel leve
 
 void CallbackChannel::write(const toolkit::Logger &logger, const toolkit::LogContextPtr &ctx) {
     // 一次性播放很多路流时，偶发会出现ctx是野指针的情况，未定位到原因，这里针对野指针指向的值进行筛选拦截
-    if (!ctx || ctx->_level < 0 || ctx->_level > 4) {
+    // 增加更严格的检查：指针有效性、level范围、以及基本的内存地址检查
+    if (!ctx) {
         return;
     }
+    
+    // 检查指针是否在合理的内存范围内（避免野指针）
+    try {
+        if (ctx->_level < 0 || ctx->_level > 4) {
+            return;
+        }
+    } catch (...) {
+        // 如果访问ctx的成员异常，说明是野指针
+        return;
+    }
+    
     std::ostringstream oss;
     format(logger, oss, ctx);
     if (_callback) {
@@ -49,10 +61,13 @@ void SetLogCallback(LogCallback callback) {
 namespace zlmplayer {
 
 ZlmPlayerImpl::ZlmPlayerImpl() {
-    m_packetBuf = std::unique_ptr<RawBuffer>(new RawBuffer());
-    m_videoExtraBuf = std::unique_ptr<RawBuffer>(new RawBuffer());
-    m_audioExtraBuf = std::unique_ptr<RawBuffer>(new RawBuffer());
-
+    try {
+        m_packetBuf = std::make_unique<RawBuffer>();
+        m_videoExtraBuf = std::make_unique<RawBuffer>();
+        m_audioExtraBuf = std::make_unique<RawBuffer>();
+    } catch (const std::exception &e) {
+        ErrorL << "Failed to initialize buffers: " << e.what();
+    }
 }
 
 ZlmPlayerImpl::~ZlmPlayerImpl() {}
@@ -175,6 +190,12 @@ void ZlmPlayerImpl::StreamClose() {
 
 void ZlmPlayerImpl::CreateStream() {
     std::lock_guard<std::mutex> lock(m_eventMutex);
+    
+    if (!m_rtspPlayerImpl) {
+        ErrorL << "RtspPlayerImpl is null";
+        return;
+    }
+    
     auto videoTrack = std::dynamic_pointer_cast<mediakit::VideoTrack>(m_rtspPlayerImpl->getTrack(mediakit::TrackVideo));
     if (videoTrack) {
         m_videoStream.streamIndex = 0;
@@ -188,11 +209,15 @@ void ZlmPlayerImpl::CreateStream() {
         m_videoExtraBuf->clear();
         auto configs = videoTrack->getConfigFrames();
         for (size_t i = 0; i < configs.size(); i++) {
-            m_videoExtraBuf->push((uint8_t *)configs[i]->data(), configs[i]->size());
+            if (configs[i]) {
+                m_videoExtraBuf->push((uint8_t *)configs[i]->data(), configs[i]->size());
+            }
         }
         if (m_videoExtraBuf->size() <= 0) {
             auto extra = videoTrack->getExtraData();
-            m_videoExtraBuf->push((uint8_t *)extra->data(), extra->size());
+            if (extra) {
+                m_videoExtraBuf->push((uint8_t *)extra->data(), extra->size());
+            }
         }
         m_videoStream.extradata = m_videoExtraBuf->data();
         m_videoStream.extrasize = m_videoExtraBuf->size();
@@ -252,7 +277,9 @@ void ZlmPlayerImpl::CreateStream() {
 
         m_audioExtraBuf->clear();
         auto extra = audioTrack->getExtraData();
-        m_audioExtraBuf->push((uint8_t *)extra->data(), extra->size());
+        if (extra) {
+            m_audioExtraBuf->push((uint8_t *)extra->data(), extra->size());
+        }
         m_audioStream.extradata = m_audioExtraBuf->data();
         m_audioStream.extrasize = m_audioExtraBuf->size();
         if (m_onStream)

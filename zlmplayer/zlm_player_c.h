@@ -24,34 +24,35 @@
 extern "C" {
 #endif
 
+// C 语言不支持默认值，因此需要显式地设置参数，否则会导致编译错误
 typedef struct ZP_PlayOptionsC {
-    bool isTcp = false;
+    bool isTcp;
 } ZP_PlayOptions;
 
 typedef struct ZP_StreamInfoC {
-    int streamIndex = -1;
-    int mediaType = -1;
-    int codecId = -1; // 使用zlm的CodecId
-    int width = 0;
-    int height = 0;
-    int frameFps = 0;
-    int sampleRate = 0;
-    int channels = 0;
-    int sampleBit = 0; // 采样点位数
-    int clockRate = 0; // 时钟频率，用于获取timebase
-    uint8_t *extradata = nullptr; // 流扩展信息
-    size_t extrasize = 0;
+    int streamIndex;
+    int mediaType;
+    int codecId; // 使用zlm的CodecId
+    int width;
+    int height;
+    int frameFps;
+    int sampleRate;
+    int channels;
+    int sampleBit; // 采样点位数
+    int clockRate; // 时钟频率，用于获取timebase
+    uint8_t *extradata; // 流扩展信息
+    size_t extrasize;
 } ZP_StreamInfo;
 
 typedef struct ZP_PacketC {
-    int streamIndex = -1;
-    int mediaType = -1;
-    bool isKey = false;
-    uint8_t *data = nullptr;
-    size_t size = 0;
-    int64_t pts = 0;
-    int64_t dts = 0;
-    int clockRate = 0; // 时钟频率，用于获取timebase
+    int streamIndex;
+    int mediaType;
+    bool isKey;
+    uint8_t *data;
+    size_t size;
+    int64_t pts;
+    int64_t dts;
+    int clockRate; // 时钟频率，用于获取timebase
 } ZP_Packet;
 
 enum ZP_PlayStatus {

@@ -31,6 +31,13 @@ public:
         return true;
     }
 
+    // 获取数据的快照副本（线程安全）
+    std::vector<uint8_t> getSnapshot() {
+        std::lock_guard<std::mutex> lock(m_mtx);
+        return m_buf;
+    }
+
+    // 获取数据指针（必须在持有锁的情况下使用，或立即使用）
     uint8_t *data() {
         std::lock_guard<std::mutex> lock(m_mtx);
         return m_buf.data();
@@ -41,7 +48,7 @@ public:
     }
     void clear() {
         std::lock_guard<std::mutex> lock(m_mtx);
-        if (m_buf.size() > 0)
+        if (!m_buf.empty())
             m_buf.clear();
     }
 

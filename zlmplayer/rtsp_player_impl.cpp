@@ -50,7 +50,8 @@ std::vector<mediakit::Track::Ptr> RtspPlayerImpl::getTracks(bool ready /*= true*
 }
 
 int RtspPlayerImpl::getAVCodecId(mediakit::CodecId id) {
-    //暂时就这几种，后续补充
+    // 暂时就这几种，后续补充
+    // 使用FFmpeg的AVCodecID枚举值
     switch (id) {
         case mediakit::CodecInvalid: return 0; // AV_CODEC_ID_NONE
         case mediakit::CodecH264: return 27; // AV_CODEC_ID_H264
@@ -61,7 +62,7 @@ int RtspPlayerImpl::getAVCodecId(mediakit::CodecId id) {
         case mediakit::CodecOpus: return 86076; // AV_CODEC_ID_OPUS
         default: break;
     }
-    return 0;
+    return 0; // AV_CODEC_ID_NONE
 }
 
 int RtspPlayerImpl::getVideoClockRate() {
