@@ -78,7 +78,7 @@ public:
 private:
     bool StreamOpen(const std::string &url, const PlayOptions &options);
     void StreamClose();
-    void CreateStream();
+    bool CreateStream();
 
 private:
     OnStream m_onStream = nullptr;
@@ -89,6 +89,7 @@ private:
     std::mutex m_mutex;
     std::condition_variable m_cv;
     std::mutex m_eventMutex;
+    std::mutex m_streamInfoMutex;
     StreamInfo m_videoStream;
     StreamInfo m_audioStream;
     std::unique_ptr<RawBuffer> m_videoExtraBuf;
