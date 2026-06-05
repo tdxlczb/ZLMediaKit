@@ -126,16 +126,21 @@ void ZlmPlayerImpl::Speed(double speed) {
 }
 
 StreamInfo ZlmPlayerImpl::GetVideoStream() {
+    std::lock_guard<std::mutex> lock(m_streamInfoMutex);
     return m_videoStream;
 }
 
 StreamInfo ZlmPlayerImpl::GetAudioStream() {
+    std::lock_guard<std::mutex> lock(m_streamInfoMutex);
     return m_audioStream;
 }
 
 bool ZlmPlayerImpl::StreamOpen(const std::string &url, const PlayOptions &options) {
     auto poller = toolkit::EventPollerPool::Instance().getPoller();
     m_rtspPlayerImpl = std::make_shared<RtspPlayerImpl>(poller);
+    if (!m_rtspPlayerImpl)
+        return false;
+
     m_rtspPlayerImpl->setOnPlayResult([this](const toolkit::SockException &ex) {
         InfoL << "OnPlayResult:" << ex.what();
         if (ex) {
@@ -145,6 +150,7 @@ bool ZlmPlayerImpl::StreamOpen(const std::string &url, const PlayOptions &option
                 m_onPlayStatus((PlayStatus)(m_playStatus.load()));
             return;
         }
+        CreateStream();
         m_playStatus = PlayStatus::Success;
         m_cv.notify_all();
         {
@@ -152,7 +158,6 @@ bool ZlmPlayerImpl::StreamOpen(const std::string &url, const PlayOptions &option
             if (m_onPlayStatus)
                 m_onPlayStatus((PlayStatus)(m_playStatus.load()));
         }
-        CreateStream();
     });
 
     m_rtspPlayerImpl->setOnShutdown([this](const toolkit::SockException &ex) {
@@ -188,24 +193,15 @@ void ZlmPlayerImpl::StreamClose() {
     m_playStatus = PlayStatus::None;
 }
 
-void ZlmPlayerImpl::CreateStream() {
-    std::lock_guard<std::mutex> lock(m_eventMutex);
-    
+bool ZlmPlayerImpl::CreateStream() {
     if (!m_rtspPlayerImpl) {
         ErrorL << "RtspPlayerImpl is null";
-        return;
+        return false;
     }
     
+    bool openStreamSuccess = false;
     auto videoTrack = std::dynamic_pointer_cast<mediakit::VideoTrack>(m_rtspPlayerImpl->getTrack(mediakit::TrackVideo));
     if (videoTrack) {
-        m_videoStream.streamIndex = 0;
-        m_videoStream.mediaType = kMediaVideo;
-        m_videoStream.codecId = videoTrack->getCodecId();
-        m_videoStream.width = videoTrack->getVideoWidth();
-        m_videoStream.height = videoTrack->getVideoHeight();
-        m_videoStream.frameFps = videoTrack->getVideoFps();
-        m_videoStream.clockRate = m_rtspPlayerImpl->getVideoClockRate();
-
         m_videoExtraBuf->clear();
         auto configs = videoTrack->getConfigFrames();
         for (size_t i = 0; i < configs.size(); i++) {
@@ -219,12 +215,24 @@ void ZlmPlayerImpl::CreateStream() {
                 m_videoExtraBuf->push((uint8_t *)extra->data(), extra->size());
             }
         }
-        m_videoStream.extradata = m_videoExtraBuf->data();
-        m_videoStream.extrasize = m_videoExtraBuf->size();
-
-        if (m_onStream)
-            m_onStream(m_videoStream);
-
+        {
+            std::lock_guard<std::mutex> lock(m_streamInfoMutex);
+            m_videoStream.streamIndex = 0;
+            m_videoStream.mediaType = kMediaVideo;
+            m_videoStream.codecId = videoTrack->getCodecId();
+            m_videoStream.width = videoTrack->getVideoWidth();
+            m_videoStream.height = videoTrack->getVideoHeight();
+            m_videoStream.frameFps = videoTrack->getVideoFps();
+            m_videoStream.clockRate = m_rtspPlayerImpl->getVideoClockRate();
+            m_videoStream.extradata = m_videoExtraBuf->data();
+            m_videoStream.extrasize = m_videoExtraBuf->size();
+        }
+        openStreamSuccess = true;
+        {
+            std::lock_guard<std::mutex> lock(m_eventMutex);
+            if (m_onStream)
+                m_onStream(m_videoStream);
+        }
         videoTrack->addDelegate([this](const mediakit::Frame::Ptr &frame) {
             std::lock_guard<std::mutex> lock(m_eventMutex);
             if (frame && m_onPacket) {
@@ -267,24 +275,29 @@ void ZlmPlayerImpl::CreateStream() {
 
     auto audioTrack = std::dynamic_pointer_cast<mediakit::AudioTrack>(m_rtspPlayerImpl->getTrack(mediakit::TrackAudio));
     if (audioTrack) {
-        m_audioStream.streamIndex = 1;
-        m_audioStream.mediaType = kMediaAudio;
-        m_audioStream.codecId = audioTrack->getCodecId();
-        m_audioStream.sampleRate = audioTrack->getAudioSampleRate();
-        m_audioStream.channels = audioTrack->getAudioChannel();
-        m_audioStream.sampleBit = audioTrack->getAudioSampleBit();
-        m_audioStream.clockRate = m_audioStream.sampleRate;
-
         m_audioExtraBuf->clear();
         auto extra = audioTrack->getExtraData();
         if (extra) {
             m_audioExtraBuf->push((uint8_t *)extra->data(), extra->size());
         }
-        m_audioStream.extradata = m_audioExtraBuf->data();
-        m_audioStream.extrasize = m_audioExtraBuf->size();
-        if (m_onStream)
-            m_onStream(m_audioStream);
-
+        {
+            std::lock_guard<std::mutex> lock(m_streamInfoMutex);
+            m_audioStream.streamIndex = 1;
+            m_audioStream.mediaType = kMediaAudio;
+            m_audioStream.codecId = audioTrack->getCodecId();
+            m_audioStream.sampleRate = audioTrack->getAudioSampleRate();
+            m_audioStream.channels = audioTrack->getAudioChannel();
+            m_audioStream.sampleBit = audioTrack->getAudioSampleBit();
+            m_audioStream.clockRate = m_audioStream.sampleRate;
+            m_audioStream.extradata = m_audioExtraBuf->data();
+            m_audioStream.extrasize = m_audioExtraBuf->size();
+        }
+        openStreamSuccess = true;
+        {
+            std::lock_guard<std::mutex> lock(m_eventMutex);
+            if (m_onStream)
+                m_onStream(m_audioStream);
+        }
         audioTrack->addDelegate([this](const mediakit::Frame::Ptr &frame) {
             std::lock_guard<std::mutex> lock(m_eventMutex);
             if (frame && m_onPacket) {
@@ -302,6 +315,7 @@ void ZlmPlayerImpl::CreateStream() {
             return true;
         });
     }
+    return openStreamSuccess;
 }
 
 } // namespace zlmplayer
