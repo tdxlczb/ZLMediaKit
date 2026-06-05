@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2016-present The ZLMediaKit project authors. All Rights Reserved.
  *
  * This file is part of ZLMediaKit(https://github.com/ZLMediaKit/ZLMediaKit).
@@ -61,7 +61,7 @@ bool AACRtpDecoder::inputRtp(const RtpPacket::Ptr &rtp, bool key_pos) {
         return false;
     }
 
-    auto stamp = rtp->getStampMS();
+    auto stamp = rtp->getStamp();
     // rtp数据开始部分  [AUTO-TRANSLATED:f22ebdb9]
     // Start of rtp data
     auto ptr = rtp->getPayload();
