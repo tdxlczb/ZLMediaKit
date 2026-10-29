@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2016-present The ZLMediaKit project authors. All Rights Reserved.
  *
  * This file is part of ZLMediaKit(https://github.com/ZLMediaKit/ZLMediaKit).
@@ -281,7 +281,7 @@ private:
 
 class Demuxer : protected TrackListener, public TrackSource {
 public:
-    void setTrackListener(TrackListener *listener, bool wait_track_ready = false);
+    void setTrackListener(TrackListener *listener, bool wait_track_ready = false, bool add_mute_audio = true);
     std::vector<Track::Ptr> getTracks(bool trackReady = true) const override;
 
 protected:
