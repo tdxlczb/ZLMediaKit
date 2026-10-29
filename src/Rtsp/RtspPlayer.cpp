@@ -488,7 +488,7 @@ void RtspPlayer::sendPause(int type, uint32_t seekMS) {
     // Start or pause RTSP
     switch (type) {
         case type_pause: sendRtspRequest("PAUSE", _control_url, {}); break;
-        case type_play: sendRtspRequest("PLAY", _content_base); break;
+        case type_play:
         case type_seek: {
             std::string range_header;
             if (_range_type == "clock" && !_range_start_str.empty()) {
