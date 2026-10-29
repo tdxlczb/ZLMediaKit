@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2016-present The ZLMediaKit project authors. All Rights Reserved.
  *
  * This file is part of ZLMediaKit(https://github.com/ZLMediaKit/ZLMediaKit).
@@ -854,7 +854,7 @@ void RtspSession::handleReq_Play(const Parser &parser) {
     }
 
     //在回复rtsp信令后再恢复播放
-    play_src->pause(false);
+    //play_src->pause(false);
 
     setSocketFlags();
 
